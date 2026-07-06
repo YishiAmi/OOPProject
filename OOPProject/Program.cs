@@ -74,6 +74,81 @@ namespace rpg
         Defense += 2;
         Speed += 1;
     }
+    // Dummy Classes
+
+public class Weapon
+{
+    public string Name { get; set; }
+    public int Damage { get; set; }
+
+    public Weapon(string name, int damage)
+    {
+        Name = name;
+        Damage = damage;
+    }
+}
+
+public class Armor
+{
+    public string Name { get; set; }
+    public int Defense { get; set; }
+
+    public Armor(string name, int defense)
+    {
+        Name = name;
+        Defense = defense;
+    }
+}
+
+public class Item
+{
+    public string Name { get; set; }
+    public string Description { get; set; }
+
+    public Item(string name, string description)
+    {
+        Name = name;
+        Description = description;
+    }
+}
+
+public class Enemy
+{
+    public string Name { get; set; }
+    public int Health { get; set; }
+    public int Attack { get; set; }
+
+    public Enemy(string name, int health, int attack)
+    {
+        Name = name;
+        Health = health;
+        Attack = attack;
+    }
+}
+
+public class Quest
+{
+    public string Title { get; set; }
+    public string Objective { get; set; }
+    public bool IsCompleted { get; set; }
+
+    public Quest(string title, string objective)
+    {
+        Title = title;
+        Objective = objective;
+        IsCompleted = false;
+    }
+}
+
+public class Inventory
+{
+    public int Gold { get; set; }
+
+    public Inventory(int gold)
+    {
+        Gold = gold;
+    }
+}
 
     
 
