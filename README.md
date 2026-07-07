@@ -1,0 +1,1 @@
+This application is a role-playing game (RPG) system that manages player characters, battles, equipment, skills, quests, and game progression. The system allows players to manage character statistics, fight enemies, use skills, collect items, complete quests, and interact with different game elements.
