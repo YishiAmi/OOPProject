@@ -1,20 +1,33 @@
-namespace rpg
+namespace RPGGameLibrary.Items
 {
     public class Potion : Item
     {
         public int HealAmount { get; set; }
 
 
-        public Potion(string name, string description, int healAmount)
-            : base(name, description)
+        public Potion(
+            string name,
+            string description,
+            int value,
+            int healAmount
+        )
+        : base(name, description, value)
         {
             HealAmount = healAmount;
         }
 
 
-        public void Use(Character character)
+        public void Drink()
         {
-            character.Heal(HealAmount);
+            Console.WriteLine(
+                $"{Name} restored {HealAmount} HP"
+            );
+        }
+
+
+        public override void Use()
+        {
+            Drink();
         }
     }
 }
