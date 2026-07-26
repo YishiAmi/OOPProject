@@ -1,6 +1,20 @@
-namespace RpgLibrary.Items;
-
-public class Potion : Item
+namespace rpg
 {
-    public int HealAmount { get; set; }
+    public class Potion : Item
+    {
+        public int HealAmount { get; set; }
+
+
+        public Potion(string name, string description, int healAmount)
+            : base(name, description)
+        {
+            HealAmount = healAmount;
+        }
+
+
+        public void Use(Character character)
+        {
+            character.Heal(HealAmount);
+        }
+    }
 }
