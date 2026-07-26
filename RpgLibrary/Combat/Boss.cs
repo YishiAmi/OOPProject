@@ -1,6 +1,52 @@
-namespace RpgLibrary.Combat;
+using System;
 
-public class Boss : Enemy
+namespace rpg
 {
-    public UltimateSkill? UltimateSkill { get; set; }
-}
+ 
+    // Boss, a special Enemy with an UltimateSkill and enrage mode.
+    // Shows: inheritance (Boss : Enemy) + composition (has-a Ultimate).
+
+    public class Boss : Enemy
+    {
+        public UltimateSkill Ultimate {get;set;}
+        public bool IsEnraged {get;set; }
+
+        public Boss(string name, int maxHealth, int attack, int defense, UltimateSkill ultimate): base(name, maxHealth, attack, defense)
+        {
+            Ultimate = ultimate;
+            IsEnraged = false;
+        }
+        // and enters enrage mode below 30% HP.
+        public override void TakeDamage(int damage)
+        {
+            base.TakeDamage(damage);
+            Ultimate.Charge();
+
+            Console.WriteLine($"(Ultimate charge:{Ultimate.CurrentCharge}/{Ultimate.MaxCharge})");
+
+            if (!IsEnraged && IsAlive() && Health <= MaxHealth * 3 / 10)
+            {
+                IsEnraged = true;
+                Attack += 8;
+                Console.WriteLine($" *** {Name} ENRAGES! Attack rises by 8. ***");
+            }
+        }
+
+        public override void TakeTurn(ICombat target)
+        {
+            if (!IsAlive()) return;
+
+            string phase = IsEnraged ? "PHASE 2 (Enraged)" : "PHASE 1";
+            Console.WriteLine($"[BOSS {Name} — {phase}]");
+
+            if (Ultimate.IsCharged)
+            {
+                Ultimate.Use(this, target);
+            }
+            else
+    
+                base.TakeTurn(target);
+            }
+        }
+    }
+
