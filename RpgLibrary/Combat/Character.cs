@@ -1,37 +1,58 @@
-using RpgLibrary.Contracts;
+using System;
 
-namespace RpgLibrary.Combat;
-
-public class Character : ICombatant
+namespace rpg
 {
-    public string Name { get; set; } = string.Empty;
+    // Hero , a simple class that implements ICombat.
+    // Having TWO different implementers (Hero and Enemy) is what
 
-    public int Level { get; set; } = 1;
 
-    public int MaxHealth { get; set; }
-
-    public int Health { get; set; }
-
-    public int Attack { get; set; }
-
-    public int Defense { get; set; }
-
-    public int Speed { get; set; }
-
-    public string Description { get; set; } = string.Empty;
-
-    public bool IsAlive()
+    public class Hero : ICombat
     {
-        return Health > 0;
-    }
+     
+        public string Name { get; private set; }
+        public int MaxHealth { get; private set; }
+        public int Health { get; private set; }
+        public int Attack { get; private set; }
+        public int Defense { get; private set; }
 
-    public void TakeDamage(int amount)
-    {
-        Health = Math.Max(0, Health - Math.Max(0, amount));
-    }
+        public Hero(string name, int maxHealth, int attack, int defense)
+        {
+            Name = name;
+            MaxHealth = maxHealth;
+            Health = maxHealth;   // start at full HP
+            Attack = attack;
+            Defense = defense;
+        }
 
-    public void Heal(int amount)
-    {
-        Health = Math.Min(MaxHealth, Health + Math.Max(0, amount));
+        public bool IsAlive()
+        {
+            return Health > 0;
+        }
+
+        public void TakeDamage(int damage)
+        {
+            // Defense reduces incoming damage a bit
+            int actual = damage - Defense / 3;
+            if (actual < 1) actual = 1;
+
+            Health -= actual;
+            if (Health < 0) Health = 0;
+
+            Console.WriteLine($" {Name} takes {actual} damage ({Health}/{MaxHealth} HP)");
+        }
+
+        public void Heal(int amount)
+        {
+            Health += amount;
+            if (Health > MaxHealth) Health = MaxHealth;
+            Console.WriteLine($"  {Name} heals {amount} HP ({Health}/{MaxHealth})");
+        }
+
+    
+        public void BasicAttack(ICombat target)
+        {
+            Console.WriteLine($"{Name} slashes at {target.Name}!");
+            target.TakeDamage(Attack);
+        }
     }
 }
