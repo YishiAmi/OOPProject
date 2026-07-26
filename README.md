@@ -1,29 +1,42 @@
+# RPG Class Library
+
+A small .NET class library containing reusable RPG domain models, accompanied by a minimal console application that demonstrates how to consume the library. The repository is a shared object-oriented programming project, not a complete game.
+
 ## Team Members
-- Ammar Mustaqim Bin Mohamad Shamsul Akhmar - 22005646
-- Mohamedelhassan Mohamed Elhag Momen - 25014926
-- Mohd Harith Bin Abd Manan - 26000341
 
-## Application Description
-This application is a role-playing game (RPG) system that manages player characters, battles, equipment, skills, quests, and game progression. The system allows players to manage character statistics, fight enemies, use skills, collect items, complete quests, and interact with different game elements.
+- Ammar Mustaqim Bin Mohamad Shamsul Akhmar — 22005646
+- Mohamedelhassan Mohamed Elhag Momen — 25014926
+- Mohd Harith Bin Abd Manan — 26000341
 
-**Problem it solves:** Provides a simplified object-oriented framework for simulating an RPG's core systems (combat, leveling, inventory, questing) that could be extended into a playable console game or serve as a backend model for a larger game.
+## Solution Structure
 
-## List of Classes
+```text
+OOPProject.sln
+├── RpgLibrary/
+│   ├── Contracts/   Shared interfaces
+│   ├── Combat/      Characters, enemies, and skills
+│   ├── Items/       Equipment, consumables, and inventory
+│   └── World/       NPCs, shops, maps, quests, and game state
+└── RpgDemo/         Minimal console consumer
+```
 
-| Class | Purpose |
-|-------|---------|
-| Character | Player character - stats, health, leveling, taking damage/healing |
-| Enemy | Standard opponent with combat stats |
-| Boss | Special high-difficulty opponent with an ultimate skill |
-| Weapon | Equippable item that adds attack damage |
-| Armor | Equippable item that adds defense |
-| Skill | Regular combat ability with damage/description |
-| UltimateSkill | Powerful ability with cooldown |
-| Item | Generic collectible/usable object |
-| Potion | Consumable item that restores health |
-| Inventory | Holds gold and items owned by the player |
-| Quest | Objective/task with completion status |
-| NPC | Non-playable character with dialogue |
-| Shop | Vendor location with items for sale |
-| Map | Game area/level with a difficulty rating |
-| GameManager | Tracks overall game state and current level |
+`RpgLibrary` builds `RpgLibrary.dll`. `RpgDemo` references that project and shows basic object creation without adding gameplay logic.
+
+## Build and Run
+
+The solution targets .NET 10.
+
+```bash
+dotnet restore OOPProject.sln
+dotnet build OOPProject.sln
+dotnet run --project RpgDemo/RpgDemo.csproj
+```
+
+## Module Ownership
+
+- **Combat:** Person A
+- **Items:** Person B
+- **World:** Person C
+- **Contracts:** shared; coordinate changes because multiple modules depend on them
+
+Keep public types in individual files and use their module namespace, such as `RpgLibrary.Combat` or `RpgLibrary.Items`.
