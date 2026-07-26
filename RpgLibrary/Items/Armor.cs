@@ -1,15 +1,35 @@
-namespace rpg
+namespace RPGGameLibrary.Items
 {
-    public class Armor
+    public class Armor : Item
     {
-        public string Name { get; set; }
-        public int DefenseBonus { get; set; }
+        public int Defense { get; set; }
+
+        public string ArmorType { get; set; }
 
 
-        public Armor(string name, int defenseBonus)
+        public Armor(
+            string name,
+            string description,
+            int value,
+            int defense,
+            string armorType
+        )
+        : base(name, description, value)
         {
-            Name = name;
-            DefenseBonus = defenseBonus;
+            Defense = defense;
+            ArmorType = armorType;
+        }
+
+
+        public override void Use()
+        {
+            Console.WriteLine(
+                $"Equipped {Name}"
+            );
+
+            Console.WriteLine(
+                $"Defense +{Defense}"
+            );
         }
     }
 }
