@@ -1,6 +1,15 @@
-namespace RpgLibrary.Items;
-
-public class Weapon : Item
+namespace rpg
 {
-    public int Damage { get; set; }
+    public class Weapon
+    {
+        public string Name { get; set; }
+        public int AttackBonus { get; set; }
+
+
+        public Weapon(string name, int attackBonus)
+        {
+            Name = name;
+            AttackBonus = attackBonus;
+        }
+    }
 }
