@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace rpg
+namespace RpgLibrary.Combat
 {
   
     // i use abstract enemy, the shared base for all enemies.
