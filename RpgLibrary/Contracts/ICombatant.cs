@@ -1,18 +1,15 @@
-using System;
+namespace RpgLibrary.Contracts;
 
-namespace rpg
+public interface ICombat
 {
-    public interface ICombat
-    {
-        // Read-only info about the fighters
-        string Name { get; }
-        int Health { get; }
-        int MaxHealth { get; }
-        int Defense { get; }
+    // Read-only info about the fighters
+    string Name { get; }
+    int Health { get; }
+    int MaxHealth { get; }
+    int Defense { get; }
 
-        // things that the fighters needs to have in their code
-        bool IsAlive();
-        void TakeDamage(int damage);
-        void Heal(int amount);
-    }
+    // Behaviors every combatant must provide
+    bool IsAlive();
+    void TakeDamage(int damage);
+    void Heal(int amount);
 }
