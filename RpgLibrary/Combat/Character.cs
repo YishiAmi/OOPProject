@@ -1,6 +1,6 @@
 using System;
 
-namespace rpg
+namespace RpgLibrary.Combat
 {
     // Hero , a simple class that implements ICombat.
     // Having TWO different implementers (Hero and Enemy) is what
