@@ -4,7 +4,7 @@ namespace rpg
 {
     public interface ICombat
     {
-        // Read-only info about the fighter
+        // Read-only info about the fighters
         string Name { get; }
         int Health { get; }
         int MaxHealth { get; }
