@@ -1,6 +1,6 @@
 using System;
 
-namespace rpg
+namespace RpgLibrary.Combat
 {
 
     // Ultimate = a Skill that must be CHARGED before it can fire.
