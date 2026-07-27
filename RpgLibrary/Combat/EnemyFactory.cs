@@ -1,6 +1,6 @@
 using System;
 
-namespace rpg
+namespace RpgLibrary.Combat
 {
 
     
