@@ -1,4 +1,5 @@
 using System;
+using RpgLibrary.Contracts;
 
 namespace RpgLibrary.Combat
 {
