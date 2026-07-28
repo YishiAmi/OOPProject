@@ -1,39 +1,24 @@
-# Repository Guidelines
+# AI Assistant Context & Repository Rules
 
-## Project Structure & Module Organization
+**ATTENTION AI CODING ASSISTANTS:** Read these rules before generating, modifying, or refactoring any code in this repository. 
 
-`OOPProject.sln` contains two .NET 10 projects:
+## 1. Project Architecture & Dependency Strict Rules
+*   **Structure:** This project consists of a C# Class Library (`RpgLibrary`) and a Console Application Demo (`RpgDemo`)[cite: 1].
+*   **The Facade Pattern:** The project relies heavily on the Facade pattern[cite: 1]. `RpgLibrary.World.GameManager` is the Facade[cite: 1]. Do NOT create direct dependencies between the `Combat` and `Items` folders. All top-level coordination happens exclusively through `GameManager`[cite: 1].
+*   **Interface Contracts:** Subsystems MUST communicate ONLY through the shared interfaces located in `RpgLibrary/Contracts/` (`ICombatant`, `IShopItem`, `IEquippable`)[cite: 1].
+*   **IMMUTABILITY:** Never modify the interfaces in `RpgLibrary/Contracts/` unless explicitly instructed by the user.
 
-- `RpgLibrary/` builds the reusable domain-model library. Shared interfaces live in `Contracts/`; classes are grouped by `Combat/`, `Items/`, and `World/`.
-- `RpgDemo/` is a small console consumer that references the library. Keep `Program.cs` demonstrative; application or gameplay logic does not belong here.
-- `README.md` documents the solution and module ownership.
+## 2. Namespace & File Structure Conventions
+*   **File Isolation:** Strictly enforce one class per file[cite: 1]. Do not combine multiple classes into a single `.cs` file.
+*   **Namespaces:** You must strictly adhere to the following exact namespaces based on the folder location[cite: 1]. Do NOT hallucinate namespaces like `namespace rpg` or `RPGGameLibrary`[cite: 1]:
+    *   `RpgLibrary.Contracts` (Shared interfaces)
+    *   `RpgLibrary.Combat` (Enemies, Bosses, Skills)
+    *   `RpgLibrary.Items` (Weapons, Armor, Inventory)
+    *   `RpgLibrary.World` (Map, NPC, Quest, GameManager)
 
-Generated `bin/` and `obj/` directories are ignored and must not be committed. Add future automated tests in a separate `RpgLibrary.Tests/` project.
-
-## Build, Test, and Development Commands
-
-Run commands from the repository root:
-
-```bash
-dotnet restore OOPProject.sln
-dotnet build OOPProject.sln
-dotnet run --project RpgDemo/RpgDemo.csproj
-dotnet test OOPProject.sln
-dotnet format OOPProject.sln --verify-no-changes
-```
-
-`restore` resolves dependencies, `build` compiles both projects, and `run` executes the minimal demo. `test` will discover test projects once added. The final command checks standard .NET formatting without changing files.
-
-## Coding Style & Naming Conventions
-
-Use four-space indentation and conventional C# brace placement. Use `PascalCase` for types, methods, and public properties; use `camelCase` for parameters and local variables. Keep one public type per matching file, such as `Character.cs`. Use module namespaces (`RpgLibrary.Combat`, `RpgLibrary.Items`, or `RpgLibrary.World`) and place cross-module interfaces in `RpgLibrary.Contracts`. Preserve nullable correctness and avoid suppressing warnings without an explanation.
-
-## Testing Guidelines
-
-There is no automated suite yet. Add behavioral tests in `RpgLibrary.Tests`, naming files after the class under test. Use descriptive names such as `Heal_WhenAmountExceedsMaximum_CapsHealth`. Cover interface contracts and boundary behavior; do not test simple auto-properties solely for coverage.
-
-## Commit & Pull Request Guidelines
-
-Recent commits use short, imperative summaries such as `Update README.md` and `Revise team members section in README`. Keep subjects concise but more specific when possible, for example `Add health bounds tests`.
-
-Pull requests should explain the change and motivation, list validation commands run, and link related issues. Include console output or screenshots when behavior visible to users changes. Keep each PR focused and avoid committing `bin/`, `obj/`, IDE settings, or unrelated cleanup.
+## 3. Anti-Hallucination ("Vibe Coding" Prevention)
+*   **Implementation Checks:** When generating a new class, immediately check its required interface. 
+    *   If generating a weapon/armor/potion for the `Items` layer, it MUST implement `IShopItem`[cite: 1]. 
+    *   If generating an enemy/boss/character for the `Combat` layer, it MUST implement `ICombatant`[cite: 1].
+*   **Properties:** Ensure interface implementation is exact. For example, `IShopItem` requires a `Price` property, do not arbitrarily substitute this with `Value`[cite: 1].
+*   **Dead Code:** Do not create or reference classes in the root `RpgLibrary/` directory (e.g., a stray `Character.cs`). All classes must live in their respective subfolders[cite: 1, 2].
