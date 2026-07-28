@@ -1,6 +1,6 @@
 namespace RpgLibrary.Contracts;
 
-public interface ICombat
+public interface ICombatant
 {
     // Read-only info about the fighters
     string Name { get; }
