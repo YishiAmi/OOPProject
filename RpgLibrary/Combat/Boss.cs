@@ -1,5 +1,6 @@
 using System;
 using RpgLibrary.Contracts;
+using RpgLibrary.Exceptions;
 
 namespace RpgLibrary.Combat
 {
@@ -38,16 +39,25 @@ namespace RpgLibrary.Combat
             if (!IsAlive()) return;
 
             string phase = IsEnraged ? "PHASE 2 (Enraged)" : "PHASE 1";
-            Console.WriteLine($"[BOSS {Name} — {phase}]");
+            Console.WriteLine($"[BOSS {Name} - {phase}]");
 
             if (Ultimate.IsCharged)
             {
+            try
+            {
                 Ultimate.Use(this, target);
             }
-            else
-    
+            catch (UltimateNotChargedException ex)
+            {
+                Console.WriteLine($"[Boss] {ex.Message} - attacking normally instead.");
                 base.TakeTurn(target);
             }
         }
+        else
+        {
+            base.TakeTurn(target);
+        }
+        }
     }
+}
 
