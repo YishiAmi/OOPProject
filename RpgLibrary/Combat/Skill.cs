@@ -1,6 +1,6 @@
 using System;
-
-namespace rpg
+using RpgLibrary.Contracts;
+namespace RpgLibrary.Combat
 {
 
     public abstract class Skill
