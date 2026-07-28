@@ -1,8 +1,30 @@
-namespace RpgLibrary.World;
+using System.Collections.Generic;
+using RpgLibrary.Contracts;
 
-public class Map
+namespace RpgLibrary.World
 {
-    public string Name { get; set; } = string.Empty;
+    public class Map
+    {
+        // basic stuff 
+        public string MapName { get; }
+        public int Difficulty { get; }
+        
+        // awsome intgrations
+        public List<NPC> NPCs { get; } = new();
+        public Shop? LocalShop { get; set; }
+        public List<ICombatant> Enemies { get; } = new();
 
-    public int Difficulty { get; set; }
+        public Map(string mapName, int difficulty)
+        {
+            MapName = mapName;
+            Difficulty = difficulty;
+        }    
+    }
 }
+
+/*
+    Notes:
+
+    -   
+
+*/
