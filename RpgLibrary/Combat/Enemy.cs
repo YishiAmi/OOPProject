@@ -6,28 +6,30 @@ namespace RpgLibrary.Combat
 {
   
     // i use abstract enemy, the shared base for all enemies.
-    // Implements ICombat, so skills can target any Enemy.
-    public abstract class Enemy : ICombat
+    // Implements ICombatant, so skills can target any Enemy.
+    public abstract class Enemy : ICombatant
     {
         public string Name {get; private set;}
         public int MaxHealth {get; private set;}
         public int Health {get; protected set;}
         public int Attack {get; protected set;}   // subclass may boost
         public int Defense {get; private set;}
+        public int Speed {get; private set;}
 
-        
+
         protected List<Skill> Skills { get; private set; }
 
         // Rotates through skills each turn
         private int _nextSkillIndex;
 
-        protected Enemy(string name, int maxHealth, int attack, int defense)
+        protected Enemy(string name, int maxHealth, int attack, int defense, int speed = 8)
         {
             Name = name;
             MaxHealth = maxHealth;
             Health = maxHealth;
             Attack = attack;
             Defense = defense;
+            Speed = speed;
             Skills = new List<Skill>();
             _nextSkillIndex = 0;
         }
@@ -56,7 +58,9 @@ namespace RpgLibrary.Combat
         }
 
         // Take a turn — cycle through skills, else basic attack.
-        public virtual void TakeTurn(ICombat target)
+        // We now respect Skill.Target so self-targeting skills (like a
+        // healer's self-heal) actually hit the caster, not the enemy.
+        public virtual void TakeTurn(ICombatant target)
         {
             if (!IsAlive()) return;
 
@@ -64,13 +68,22 @@ namespace RpgLibrary.Combat
             {
                 Skill s = Skills[_nextSkillIndex];
                 _nextSkillIndex = (_nextSkillIndex + 1) % Skills.Count;
-                s.Use(this, target);
+
+                ICombatant actualTarget = s.Target == TargetType.Self ? this : target;
+                s.Use(this, actualTarget);
             }
             else
             {
-                Console.WriteLine($"{Name} swings for {Attack} damage!");
-                target.TakeDamage(Attack);
+                BasicAttack(target);
             }
+        }
+
+        // Plain swing — satisfies ICombatant.BasicAttack so BattleSystem
+        // can treat every combatant the same way.
+        public void BasicAttack(ICombatant target)
+        {
+            Console.WriteLine($"{Name} swings for {Attack} damage!");
+            target.TakeDamage(Attack);
         }
 
         // Public entry so factories/bosses can add skills after construction.
@@ -82,8 +95,7 @@ namespace RpgLibrary.Combat
     // WeakEnemy, low HP, low attack. can name freely
     public class WeakEnemy : Enemy
     {
-        public WeakEnemy(string name = "Weak Enemy")
-            : base(name, 40, 8, 2)
+        public WeakEnemy(string name = "Weak Enemy"): base(name, 40, 8, 2, speed: 12)   // fast but fragile
         {
             Skills.Add(new AttackSkill("Basic Attack", 10));
         }
@@ -91,11 +103,11 @@ namespace RpgLibrary.Combat
 
 
     // StrongEnemy, high HP, high attack
-   
+
     public class StrongEnemy : Enemy
     {
         public StrongEnemy(string name = "Strong Enemy")
-            : base(name, 90, 14, 8)
+            : base(name, 90, 14, 8, speed: 6)   // slow tank
         {
             Skills.Add(new AttackSkill("Heavy Attack", 20));
         }
@@ -104,7 +116,7 @@ namespace RpgLibrary.Combat
 
     public class HealerEnemy : Enemy
     {
-        public HealerEnemy(string name = "Healer Enemy"):base(name, 55, 11, 5)
+        public HealerEnemy(string name = "Healer Enemy"):base(name, 55, 11, 5, speed: 9)
         {
             Skills.Add(new AttackSkill("Basic Attack", 12));
             Skills.Add(new HealSkill("Self Heal", 15));
