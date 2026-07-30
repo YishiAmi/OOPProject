@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
-using RpgLibrary;
 using RpgLibrary.Combat;
 using RpgLibrary.Contracts;
 using RpgLibrary.World;
@@ -14,7 +13,7 @@ namespace RpgWinForm
     // and shows the result in the log. State panel refreshes after each click.
     public class DemoForm : Form
     {
-        private Character? _aria;
+        private Hero? _aria;
         private Map? _map;
         private GameManager? _game;
         private NPC? _villager;
@@ -204,7 +203,7 @@ namespace RpgWinForm
             _smallPotion   = new Potion("Small Potion", "Restores 20 HP.", 10, 20);
             AppendLog("  Created 3 items");
 
-            _aria = new Character
+            _aria = new Hero
             {
                 Name = "Aria", Level = 1, MaxHealth = 100, Health = 100,
                 Attack = 12, Defense = 8, Speed = 10,
@@ -213,7 +212,7 @@ namespace RpgWinForm
             _aria.EquipWeapon(_trainingSword);
             _aria.EquipArmor(_leatherArmor);
             _aria.Inventory.AddItem(_smallPotion);
-            AppendLog($"  Character: {_aria.Name} (ATK {_aria.Attack}, DEF {_aria.Defense})");
+            AppendLog($"  Hero: {_aria.Name} (ATK {_aria.Attack}, DEF {_aria.Defense})");
 
             _game = new GameManager(_aria, _map, startingGold: 50);
             AppendLog($"  GameManager wired (gold: {_game.PlayerGold})");
