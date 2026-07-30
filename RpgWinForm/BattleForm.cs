@@ -1,593 +1,587 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
+using System.Drawing.Drawing2D;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-
 using RpgLibrary.Combat;
 using RpgLibrary.Contracts;
-using RpgLibrary.Exceptions;
-using RPGGameLibrary.Items;
 
 namespace RpgWinForm
 {
-    public class MainForm : Form
+    // Turn-based battle window. BattleSystem runs on a background thread
+    // and calls back to us through WinFormBattleUI.
+    public class BattleForm : Form
     {
-        // --- Game state 
-        private Hero _player = null!;
-        private ICombatant _enemy = null!;
-        private AttackSkill _slash = null!;
-        private HealSkill _mend = null!;
-        private Weapon _sword = null!;
-        private Armor _armor = null!;
-        private Potion _potionTemplate = null!;
-        private readonly Random _rng = new Random();
+        // theme colours
+        private static readonly Color BgDark    = Color.FromArgb(20, 22, 40);
+        private static readonly Color PanelDark = Color.FromArgb(30, 34, 60);
+        private static readonly Color HeroColor = Color.FromArgb(120, 210, 255);
+        private static readonly Color EnemyColor= Color.FromArgb(255, 110, 120);
+        private static readonly Color GoldColor = Color.FromArgb(255, 200, 90);
+        private static readonly Color TextColor = Color.FromArgb(230, 232, 245);
+        private static readonly Color MutedColor= Color.FromArgb(140, 150, 175);
 
-        // --- UI controls 
-        private Label _playerName = null!;
-        private Label _playerStats = null!;
-        private ProgressBar _playerHpBar = null!;
-        private Label _playerHpLabel = null!;
+        private readonly List<PartyMember> _party;
+        private readonly List<ICombatant> _enemies;
+        private WinFormBattleUI _ui = null!;
+        private BattleSystem _battle = null!;
+        private Task? _battleTask;
 
-        private Label _enemyName = null!;
-        private Label _enemyStats = null!;
-        private ProgressBar _enemyHpBar = null!;
-        private Label _enemyHpLabel = null!;
-        private Label _bossChargeLabel = null!;
-        private ProgressBar _bossChargeBar = null!;
-
+        private Label _turnBanner = null!;
+        private FlowLayoutPanel _partyStack = null!;
+        private FlowLayoutPanel _enemyStack = null!;
         private TextBox _logBox = null!;
+        private FlowLayoutPanel _actionBar = null!;
+        private Label _actionPrompt = null!;
 
-        private Button _btnAttack = null!;
-        private Button _btnHeal = null!;
-        private Button _btnPotion = null!;
-        private Button _btnTryUltimate = null!;
-        private Button _btnNextEnemy = null!;
-        private Button _btnFightBoss = null!;
-        private Button _btnPartyBattle = null!;
-        private Button _btnBattleArena = null!;
-        private Button _btnLibraryTour = null!;
+        private readonly Dictionary<ICombatant, CombatantCard> _cards = new();
 
-        public MainForm()
+        public BattleForm(List<PartyMember> party, List<ICombatant> enemies)
         {
-            Text = "RpgLibrary Demo";
-            Size = new Size(1400, 650);
-            MinimumSize = new Size(1350, 600);
+            _party = party;
+            _enemies = enemies;
+
+            Text = "Battle Arena";
+            Size = new Size(1200, 720);
+            MinimumSize = new Size(1000, 620);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(245, 245, 250);
-            Font = new Font("Segoe UI", 9F);
+            BackColor = BgDark;
+            ForeColor = TextColor;
+            Font = new Font("Segoe UI", 10F);
 
             BuildUi();
+            RegisterCombatants();
 
-            // Redirect Console output so library messages appear in the log.
-            Console.SetOut(new TextBoxWriter(_logBox));
-
-            NewGame();
+            Load += (_, _) => StartBattle();
+            FormClosing += (_, _) => { /* battle thread ends when form dies */ };
         }
 
         private void BuildUi()
         {
-            // Menu bar
-            var menu = new MenuStrip();
-            var fileMenu = new ToolStripMenuItem("Game");
-            var newGameItem = new ToolStripMenuItem("New Game", null, (_, _) => NewGame());
-            var exitItem = new ToolStripMenuItem("Exit", null, (_, _) => Close());
-            fileMenu.DropDownItems.Add(newGameItem);
-            fileMenu.DropDownItems.Add(new ToolStripSeparator());
-            fileMenu.DropDownItems.Add(exitItem);
-            menu.Items.Add(fileMenu);
-            MainMenuStrip = menu;
-            Controls.Add(menu);
-
-            // Root layout: 2 rows (game area, action bar)
             var root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                RowCount = 2,
+                RowCount = 3,
                 ColumnCount = 1,
-                Padding = new Padding(10),
+                BackColor = BgDark,
+                Padding = new Padding(12),
             };
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 130));
             Controls.Add(root);
-            root.BringToFront();
 
-            // Top: 3-column layout (Player | Log | Enemy)
-            var top = new TableLayoutPanel
+            // Turn banner
+            _turnBanner = new Label
+            {
+                Text = "Preparing battle...",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = GoldColor,
+                BackColor = PanelDark,
+            };
+            root.Controls.Add(_turnBanner, 0, 0);
+
+            // Battlefield row: party | log | enemies
+            var battlefield = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 RowCount = 1,
                 ColumnCount = 3,
+                BackColor = BgDark,
+                Margin = new Padding(0, 8, 0, 8),
             };
-            top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            root.Controls.Add(top, 0, 0);
+            battlefield.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27));
+            battlefield.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
+            battlefield.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27));
+            root.Controls.Add(battlefield, 0, 1);
 
-            top.Controls.Add(BuildPlayerPanel(), 0, 0);
-            top.Controls.Add(BuildLogPanel(), 1, 0);
-            top.Controls.Add(BuildEnemyPanel(), 2, 0);
+            battlefield.Controls.Add(BuildPartyPanel(), 0, 0);
+            battlefield.Controls.Add(BuildLogPanel(),   1, 0);
+            battlefield.Controls.Add(BuildEnemyPanel(), 2, 0);
 
-            // Bottom: action buttons
-            root.Controls.Add(BuildActionBar(), 0, 1);
+            // Action bar (bottom)
+            root.Controls.Add(BuildActionBar(), 0, 2);
         }
 
-        private GroupBox BuildPlayerPanel()
+        private GroupBox BuildPartyPanel()
         {
-            var group = new GroupBox
+            var group = MakeGroup("PARTY", HeroColor);
+            _partyStack = new FlowLayoutPanel
             {
-                Text = "Player",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(60, 60, 100),
-                Padding = new Padding(10),
+                FlowDirection = FlowDirection.TopDown,
+                AutoScroll = true,
+                WrapContents = false,
+                BackColor = PanelDark,
             };
-
-            _playerName = new Label
-            {
-                Text = "-",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                AutoSize = false,
-                Height = 30,
-                Dock = DockStyle.Top,
-                ForeColor = Color.FromArgb(80, 40, 140),
-            };
-
-            _playerHpLabel = new Label { Text = "HP: -/-", Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9F) };
-            _playerHpBar = new ProgressBar
-            {
-                Dock = DockStyle.Top,
-                Height = 20,
-                ForeColor = Color.LimeGreen,
-                Style = ProgressBarStyle.Continuous,
-            };
-
-            _playerStats = new Label
-            {
-                Text = "",
-                Dock = DockStyle.Top,
-                Height = 100,
-                Font = new Font("Segoe UI", 9F),
-                Padding = new Padding(0, 10, 0, 0),
-            };
-
-            group.Controls.Add(_playerStats);
-            group.Controls.Add(_playerHpBar);
-            group.Controls.Add(_playerHpLabel);
-            group.Controls.Add(_playerName);
+            group.Controls.Add(_partyStack);
             return group;
         }
 
         private GroupBox BuildEnemyPanel()
         {
-            var group = new GroupBox
+            var group = MakeGroup("ENEMIES", EnemyColor);
+            _enemyStack = new FlowLayoutPanel
             {
-                Text = "Enemy",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(140, 40, 40),
-                Padding = new Padding(10),
+                FlowDirection = FlowDirection.TopDown,
+                AutoScroll = true,
+                WrapContents = false,
+                BackColor = PanelDark,
             };
-
-            _enemyName = new Label
-            {
-                Text = "-",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                AutoSize = false,
-                Height = 30,
-                Dock = DockStyle.Top,
-                ForeColor = Color.FromArgb(160, 40, 40),
-            };
-
-            _enemyHpLabel = new Label { Text = "HP: -/-", Dock = DockStyle.Top, Height = 20 };
-            _enemyHpBar = new ProgressBar
-            {
-                Dock = DockStyle.Top,
-                Height = 20,
-                Style = ProgressBarStyle.Continuous,
-                ForeColor = Color.Firebrick,
-            };
-
-            _enemyStats = new Label
-            {
-                Text = "",
-                Dock = DockStyle.Top,
-                Height = 60,
-                Padding = new Padding(0, 10, 0, 0),
-            };
-
-            _bossChargeLabel = new Label
-            {
-                Text = "",
-                Dock = DockStyle.Top,
-                Height = 20,
-                ForeColor = Color.DarkOrange,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                Visible = false,
-            };
-            _bossChargeBar = new ProgressBar
-            {
-                Dock = DockStyle.Top,
-                Height = 15,
-                Style = ProgressBarStyle.Continuous,
-                ForeColor = Color.DarkOrange,
-                Visible = false,
-            };
-
-            group.Controls.Add(_bossChargeBar);
-            group.Controls.Add(_bossChargeLabel);
-            group.Controls.Add(_enemyStats);
-            group.Controls.Add(_enemyHpBar);
-            group.Controls.Add(_enemyHpLabel);
-            group.Controls.Add(_enemyName);
+            group.Controls.Add(_enemyStack);
             return group;
         }
 
         private GroupBox BuildLogPanel()
         {
-            var group = new GroupBox
-            {
-                Text = "Battle Log",
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(60, 60, 60),
-                Padding = new Padding(10),
-            };
-
+            var group = MakeGroup("BATTLE LOG", GoldColor);
             _logBox = new TextBox
             {
                 Multiline = true,
                 ReadOnly = true,
                 Dock = DockStyle.Fill,
                 ScrollBars = ScrollBars.Vertical,
-                Font = new Font("Consolas", 9F),
-                BackColor = Color.FromArgb(30, 30, 40),
-                ForeColor = Color.FromArgb(220, 220, 220),
+                Font = new Font("Consolas", 9.5F),
+                BackColor = Color.FromArgb(15, 17, 30),
+                ForeColor = TextColor,
                 BorderStyle = BorderStyle.None,
                 WordWrap = true,
             };
-
             group.Controls.Add(_logBox);
             return group;
         }
 
         private Panel BuildActionBar()
         {
-            var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(230, 230, 240) };
-
-            _btnAttack = MakeButton("Attack (Slash)", 10);
-            _btnAttack.Click += (_, _) => DoPlayerAction(() => _slash.Use(_player, _enemy));
-
-            _btnHeal = MakeButton("Heal (Field Bandage)", 150);
-            _btnHeal.Click += (_, _) => DoPlayerAction(() => _mend.Use(_player, _player));
-
-            _btnPotion = MakeButton("Use Potion", 300);
-            _btnPotion.Click += (_, _) => DoPlayerAction(UsePotion);
-
-            _btnTryUltimate = MakeButton("Force Boss Ultimate", 420);
-            _btnTryUltimate.Click += (_, _) => TryForceBossUltimate();
-            _btnTryUltimate.BackColor = Color.FromArgb(255, 220, 180);
-
-            _btnNextEnemy = MakeButton("Next Enemy", 580);
-            _btnNextEnemy.Click += (_, _) => { SpawnRandomEnemy(); UpdateUi(); };
-
-            _btnFightBoss = MakeButton("Fight Boss", 690);
-            _btnFightBoss.Click += (_, _) => { SpawnBoss(); UpdateUi(); };
-            _btnFightBoss.BackColor = Color.FromArgb(255, 200, 200);
-
-            _btnPartyBattle = MakeButton("Party Battle (Auto)", 820);
-            _btnPartyBattle.Click += (_, _) => RunPartyBattle();
-            _btnPartyBattle.BackColor = Color.FromArgb(200, 220, 255);
-
-            _btnBattleArena = MakeButton("Battle Arena", 960);
-            _btnBattleArena.Click += (_, _) => OpenBattleArena();
-            _btnBattleArena.BackColor = Color.FromArgb(30, 34, 60);
-            _btnBattleArena.ForeColor = Color.FromArgb(255, 200, 90);
-            _btnBattleArena.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-
-            _btnLibraryTour = MakeButton("Library Tour", 1100);
-            _btnLibraryTour.Click += (_, _) => new DemoForm().Show(this);
-            _btnLibraryTour.BackColor = Color.FromArgb(30, 34, 60);
-            _btnLibraryTour.ForeColor = Color.FromArgb(120, 210, 255);
-            _btnLibraryTour.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-
-            panel.Controls.AddRange(new Control[]
+            var panel = new Panel
             {
-                _btnAttack, _btnHeal, _btnPotion, _btnTryUltimate,
-                _btnNextEnemy, _btnFightBoss, _btnPartyBattle, _btnBattleArena,
-                _btnLibraryTour
-            });
+                Dock = DockStyle.Fill,
+                BackColor = PanelDark,
+                Padding = new Padding(12),
+            };
 
+            _actionPrompt = new Label
+            {
+                Text = "",
+                Dock = DockStyle.Top,
+                Height = 28,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = MutedColor,
+                TextAlign = ContentAlignment.MiddleLeft,
+            };
+
+            _actionBar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = PanelDark,
+                AutoScroll = true,
+            };
+
+            panel.Controls.Add(_actionBar);
+            panel.Controls.Add(_actionPrompt);
             return panel;
         }
 
-        // opens the interactive Battle Arena form
-        private void OpenBattleArena()
+        private GroupBox MakeGroup(string title, Color accent)
         {
-            var companion = new Hero("Kael", 80, 10, 5, speed: 11);
-            var ariaSkills = new System.Collections.Generic.List<Skill>
+            return new GroupBox
             {
-                new AttackSkill("Slash", 18),
-                new HealSkill("Field Bandage", 15, TargetType.SingleAlly),
+                Text = title,
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = accent,
+                Padding = new Padding(6),
             };
-            var kaelSkills = new System.Collections.Generic.List<Skill>
-            {
-                new AttackSkill("Power Strike", 22),
-            };
-            var party = new System.Collections.Generic.List<PartyMember>
-            {
-                new PartyMember(_player, ariaSkills, ultimate: new DrainUltimate("Blood Draw")),
-                new PartyMember(companion, kaelSkills, ultimate: new HealUltimate("Second Wind")),
-            };
-            var foes = new System.Collections.Generic.List<ICombatant>
-            {
-                EnemyFactory.CreateWeakEnemy("Goblin Scout"),
-                EnemyFactory.CreateHealerEnemy("Forest Shaman"),
-                EnemyFactory.CreateStrongEnemy("Forest Ogre"),
-            };
-
-            var arena = new BattleForm(party, foes);
-            arena.Show(this);
         }
 
-        // runs a party battle via AutoBattleUI, log goes to _logBox
-        private void RunPartyBattle()
+        private void RegisterCombatants()
         {
-            _logBox.Clear();
-            Console.WriteLine("========== PARTY TURN-BASED BATTLE ==========\n");
+            foreach (PartyMember p in _party)
+            {
+                var card = new CombatantCard(p.Combatant, p, HeroColor);
+                _cards[p.Combatant] = card;
+                _partyStack.Controls.Add(card);
+            }
+            foreach (ICombatant e in _enemies)
+            {
+                var card = new CombatantCard(e, null, EnemyColor);
+                _cards[e] = card;
+                _enemyStack.Controls.Add(card);
+            }
+        }
 
-            // Party: the player + a companion
-            var companion = new Hero("Kael", 80, 10, 5, speed: 11);
-            var ariaSkills = new System.Collections.Generic.List<Skill>
-            {
-                new AttackSkill("Slash", 18),
-                new HealSkill("Field Bandage", 15, TargetType.SingleAlly)
-            };
-            var kaelSkills = new System.Collections.Generic.List<Skill>
-            {
-                new AttackSkill("Power Strike", 22)
-            };
-            var party = new System.Collections.Generic.List<PartyMember>
-            {
-                new PartyMember(_player, ariaSkills, ultimate: new DrainUltimate("Blood Draw")),
-                new PartyMember(companion, kaelSkills, ultimate: new HealUltimate("Second Wind"))
-            };
+        private void StartBattle()
+        {
+            // Route all Console.WriteLine from the library into the log too.
+            Console.SetOut(new TextBoxWriter(_logBox));
 
-            // Enemy party of three
-            var foes = new System.Collections.Generic.List<ICombatant>
-            {
-                EnemyFactory.CreateWeakEnemy("Goblin Scout"),
-                EnemyFactory.CreateHealerEnemy("Forest Shaman"),
-                EnemyFactory.CreateStrongEnemy("Forest Ogre"),
-            };
-
-            var battle = new BattleSystem(
-                party, foes,
-                ui: new AutoBattleUI(),
+            _ui = new WinFormBattleUI(this);
+            _battle = new BattleSystem(
+                _party,
+                _enemies,
+                ui: _ui,
                 enemyStrategy: new RandomTargetStrategy(),
                 settings: new BattleSettings { UltimateChargePerTurn = 1, MaxRounds = 30 });
 
-            battle.Run();
-
-            UpdateUi();
-            CheckOutcome();
+            // Run the battle loop on a background thread so it can block on
+            // IBattleUI choices without freezing the UI.
+            _battleTask = Task.Run(() => _battle.Run());
         }
 
-        private Button MakeButton(string text, int x)
+        // Everything below is called by WinFormBattleUI from the battle thread.
+        // We must Invoke back onto the UI thread.
+
+        public void UiRefreshState(BattleState state)
         {
-            return new Button
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiRefreshState(state))); return; }
+
+            foreach (var card in _cards.Values) card.UpdateCard();
+
+            if (state.TurnOrder.Count > 0)
+                _turnBanner.Text = $"Round {state.Round}   -   Turn order: " + JoinTurnOrder(state);
+        }
+
+        public void UiShowTurn(ICombatant actor, bool isHero)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiShowTurn(actor, isHero))); return; }
+
+            _turnBanner.Text = $"{actor.Name}'s turn   (Speed {actor.Speed})";
+            _turnBanner.ForeColor = isHero ? HeroColor : EnemyColor;
+
+            // Highlight the active card
+            foreach (var kvp in _cards)
+                kvp.Value.SetActive(kvp.Key == actor);
+        }
+
+        public void UiAppendLog(string message)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiAppendLog(message))); return; }
+            _logBox.AppendText(message + Environment.NewLine);
+        }
+
+        // onChosen fires when the player clicks a button, unblocking WinFormBattleUI
+        public void UiPromptAction(PartyMember member,
+                                   IReadOnlyList<BattleActionOption> options,
+                                   Action<BattleActionOption?> onChosen)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiPromptAction(member, options, onChosen))); return; }
+
+            _actionPrompt.Text = $"{member.Combatant.Name}, choose your action:";
+            _actionPrompt.ForeColor = HeroColor;
+            _actionBar.Controls.Clear();
+
+            foreach (BattleActionOption opt in options)
             {
-                Text = text,
-                Location = new Point(x, 15),
-                Size = new Size(130, 40),
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                FlatStyle = FlatStyle.System,
+                Button btn = MakeActionButton(opt);
+                BattleActionOption captured = opt;
+                btn.Click += (_, _) =>
+                {
+                    ClearActionBar();
+                    onChosen(captured);
+                };
+                _actionBar.Controls.Add(btn);
+            }
+        }
+
+        public void UiPromptTarget(List<ICombatant> candidates,
+                                   string prompt,
+                                   Action<ICombatant?> onChosen)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiPromptTarget(candidates, prompt, onChosen))); return; }
+
+            _actionPrompt.Text = $"{prompt}:";
+            _actionPrompt.ForeColor = GoldColor;
+            _actionBar.Controls.Clear();
+
+            foreach (ICombatant c in candidates)
+            {
+                Button btn = new Button
+                {
+                    Text = $"{c.Name}  ({c.Health}/{c.MaxHealth})",
+                    AutoSize = false,
+                    Size = new Size(180, 60),
+                    BackColor = Color.FromArgb(60, 40, 40),
+                    ForeColor = TextColor,
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    Margin = new Padding(4),
+                };
+                btn.FlatAppearance.BorderColor = EnemyColor;
+                ICombatant captured = c;
+                btn.Click += (_, _) =>
+                {
+                    ClearActionBar();
+                    onChosen(captured);
+                };
+                _actionBar.Controls.Add(btn);
+            }
+        }
+
+        public void UiPromptSkill(List<Skill> skills, Action<Skill?> onChosen)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiPromptSkill(skills, onChosen))); return; }
+
+            _actionPrompt.Text = "Choose a skill:";
+            _actionPrompt.ForeColor = GoldColor;
+            _actionBar.Controls.Clear();
+
+            foreach (Skill s in skills)
+            {
+                Button btn = new Button
+                {
+                    Text = $"{s.Name}\n(power {s.Power}, {s.Target})",
+                    AutoSize = false,
+                    Size = new Size(180, 60),
+                    BackColor = Color.FromArgb(40, 60, 60),
+                    ForeColor = TextColor,
+                    Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    Margin = new Padding(4),
+                };
+                btn.FlatAppearance.BorderColor = HeroColor;
+                Skill captured = s;
+                btn.Click += (_, _) =>
+                {
+                    ClearActionBar();
+                    onChosen(captured);
+                };
+                _actionBar.Controls.Add(btn);
+            }
+        }
+
+        public void UiShowEnd(BattleOutcome outcome, int rounds)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action(() => UiShowEnd(outcome, rounds))); return; }
+
+            _turnBanner.Text = outcome switch
+            {
+                BattleOutcome.Victory => $"VICTORY - party wins in {rounds} rounds",
+                BattleOutcome.Defeat  => $"DEFEAT - party wiped out after {rounds} rounds",
+                BattleOutcome.Timeout => $"TIMEOUT - round limit reached ({rounds} rounds)",
+                _                     => $"UNDECIDED",
             };
+            _turnBanner.ForeColor = outcome == BattleOutcome.Victory ? HeroColor : EnemyColor;
+            _actionPrompt.Text = "";
+            _actionBar.Controls.Clear();
+
+            foreach (var card in _cards.Values) card.SetActive(false);
         }
 
-        private void NewGame()
+        private void ClearActionBar()
         {
-            _logBox.Clear();
-            Console.WriteLine("========== NEW GAME ==========");
+            _actionBar.Controls.Clear();
+            _actionPrompt.Text = "";
+            _actionPrompt.ForeColor = MutedColor;
+        }
 
-            _player = new Hero
+        private Button MakeActionButton(BattleActionOption opt)
+        {
+            Color face = opt.Kind switch
             {
-                Name = "Aria",
-                Level = 1,
-                MaxHealth = 100,
-                Health = 100,
-                Attack = 12,
-                Defense = 8,
-                Speed = 10,
-                Description = "Wandering swordswoman."
+                BattleActionKind.Attack   => Color.FromArgb(70, 90, 130),
+                BattleActionKind.Skill    => Color.FromArgb(60, 110, 130),
+                BattleActionKind.Ultimate => Color.FromArgb(140, 90, 40),
+                BattleActionKind.Defend   => Color.FromArgb(60, 80, 90),
+                _                          => Color.FromArgb(80, 80, 80),
             };
 
-            _sword = new Weapon("Training Sword", "Basic blade.", 25, 5, "Sword");
-            _armor = new Armor("Leather Armor", "Light chest.", 30, 4, "Light");
-            _player.EquipWeapon(_sword);
-            _player.EquipArmor(_armor);
+            string caption = opt.Detail != null
+                ? $"{opt.Label}\n{opt.Detail}"
+                : opt.Label;
 
-            _potionTemplate = new Potion("Small Potion", "Restores 20 HP.", 10, 20);
-            // Give the player 3 potions
-            for (int i = 0; i < 3; i++)
+            var btn = new Button
             {
-                try { _player.Inventory.AddItem(_potionTemplate); }
-                catch (Exception ex) { Console.WriteLine($"[Error] {ex.Message}"); }
-            }
-
-            _slash = new AttackSkill("Slash", 18);
-            _mend = new HealSkill("Field Bandage", 15);
-
-            SpawnRandomEnemy();
-            UpdateUi();
-        }
-
-        private void SpawnRandomEnemy()
-        {
-            int roll = _rng.Next(3);
-            _enemy = roll switch
-            {
-                0 => EnemyFactory.CreateWeakEnemy("Goblin Scout"),
-                1 => EnemyFactory.CreateStrongEnemy("Forest Ogre"),
-                _ => EnemyFactory.CreateHealerEnemy("Forest Shaman"),
+                Text = caption,
+                AutoSize = false,
+                Size = new Size(180, 60),
+                BackColor = opt.Enabled ? face : Color.FromArgb(50, 50, 60),
+                ForeColor = opt.Enabled ? TextColor : MutedColor,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(4),
+                Enabled = opt.Enabled,
             };
-            Console.WriteLine($"\n--- A wild {_enemy.Name} appears! ---\n");
+            btn.FlatAppearance.BorderColor = opt.Kind == BattleActionKind.Ultimate ? GoldColor : HeroColor;
+            btn.FlatAppearance.BorderSize = 2;
+            return btn;
         }
 
-        private void SpawnBoss()
+        private string JoinTurnOrder(BattleState state)
         {
-            _enemy = _rng.Next(2) == 0
-                ? EnemyFactory.CreateDamageBoss("Forest Warden")
-                : EnemyFactory.CreateDrainBoss("Shadow Wraith");
-            Console.WriteLine($"\n=== BOSS FIGHT: {_enemy.Name} appears! ===\n");
+            string s = "";
+            for (int i = 0; i < state.TurnOrder.Count; i++)
+            {
+                if (i > 0) s += "  →  ";
+                s += $"{state.TurnOrder[i].Name}({state.TurnOrder[i].Speed})";
+            }
+            return s;
+        }
+    }
+
+    // One card per fighter: name, HP bar, ultimate bar.
+    internal class CombatantCard : Panel
+    {
+        private readonly ICombatant _combatant;
+        private readonly PartyMember? _member;
+        private readonly Color _accent;
+
+        private Label _nameLabel = null!;
+        private Label _hpLabel = null!;
+        private Panel _hpBar = null!;
+        private Label _ultLabel = null!;
+        private Panel _ultBar = null!;
+
+        public CombatantCard(ICombatant combatant, PartyMember? member, Color accent)
+        {
+            _combatant = combatant;
+            _member = member;
+            _accent = accent;
+
+            Width = 260;
+            Height = 100;
+            Margin = new Padding(6);
+            BackColor = Color.FromArgb(40, 45, 70);
+            BorderStyle = BorderStyle.FixedSingle;
+
+            BuildInner();
+            UpdateCard();
         }
 
-        private void DoPlayerAction(Action action)
+        private void BuildInner()
         {
-            if (!_player.IsAlive() || !_enemy.IsAlive()) return;
-
-            try
+            _nameLabel = new Label
             {
-                action();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Error] {ex.Message}");
-            }
-
-            // Enemy retaliates if still alive
-            if (_enemy.IsAlive() && _enemy is Enemy enemyObj)
-            {
-                enemyObj.TakeTurn(_player);
-            }
-
-            UpdateUi();
-            CheckOutcome();
-        }
-
-        private void UsePotion()
-        {
-            var potion = _player.Inventory.Items.OfType<Potion>().FirstOrDefault();
-            if (potion == null)
-            {
-                Console.WriteLine("No potions left!");
-                return;
-            }
-
-            potion.Drink();
-            _player.Heal(potion.HealAmount);
-            _player.Inventory.RemoveItem(potion);
-        }
-
-        private void TryForceBossUltimate()
-        {
-            if (_enemy is not Boss boss)
-            {
-                Console.WriteLine("Only bosses have ultimates. Click 'Fight Boss' first.");
-                return;
-            }
-
-            try
-            {
-                boss.Ultimate.Use(boss, _player);
-            }
-            catch (UltimateNotChargedException ex)
-            {
-                Console.WriteLine($"[Caught UltimateNotChargedException] {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Error] {ex.Message}");
-            }
-
-            UpdateUi();
-            CheckOutcome();
-        }
-
-        private void UpdateUi()
-        {
-            // Player
-            _playerName.Text = _player.Name;
-            _playerHpBar.Maximum = Math.Max(1, _player.MaxHealth);
-            _playerHpBar.Value = Math.Max(0, Math.Min(_player.Health, _player.MaxHealth));
-            _playerHpLabel.Text = $"HP: {_player.Health}/{_player.MaxHealth}";
-
-            int potionCount = _player.Inventory.Items.OfType<Potion>().Count();
-            _playerStats.Text =
-                $"Level: {_player.Level}\n" +
-                $"Attack: {_player.Attack}\n" +
-                $"Defense: {_player.Defense}\n" +
-                $"Speed: {_player.Speed}\n" +
-                $"Gold: {_player.Gold}\n" +
-                $"Exp: {_player.Experience}/{_player.ExperienceToNextLevel}\n" +
-                $"Potions: {potionCount}";
-
-            _btnPotion.Enabled = potionCount > 0 && _player.IsAlive();
-
-            // Enemy
-            _enemyName.Text = _enemy.Name;
-            _enemyHpBar.Maximum = Math.Max(1, _enemy.MaxHealth);
-            _enemyHpBar.Value = Math.Max(0, Math.Min(_enemy.Health, _enemy.MaxHealth));
-            _enemyHpLabel.Text = $"HP: {_enemy.Health}/{_enemy.MaxHealth}";
-
-            string enemyType = _enemy switch
-            {
-                Boss => "BOSS",
-                WeakEnemy => "Weak Enemy",
-                StrongEnemy => "Strong Enemy",
-                HealerEnemy => "Healer Enemy",
-                _ => _enemy.GetType().Name,
+                Location = new Point(10, 6),
+                Size = new Size(240, 22),
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = _accent,
+                BackColor = Color.Transparent,
             };
-            _enemyStats.Text =
-                $"Type: {enemyType}\n" +
-                $"Defense: {_enemy.Defense}";
 
-            // Boss ultimate charge display
-            if (_enemy is Boss bossEnemy)
+            _hpLabel = new Label
             {
-                _bossChargeLabel.Visible = true;
-                _bossChargeBar.Visible = true;
-                _bossChargeLabel.Text = $"Ultimate charge: {bossEnemy.Ultimate.CurrentCharge}/{bossEnemy.Ultimate.MaxCharge}";
-                _bossChargeBar.Maximum = Math.Max(1, bossEnemy.Ultimate.MaxCharge);
-                _bossChargeBar.Value = Math.Max(0, Math.Min(bossEnemy.Ultimate.CurrentCharge, bossEnemy.Ultimate.MaxCharge));
-                _btnTryUltimate.Enabled = true;
+                Location = new Point(10, 32),
+                Size = new Size(240, 16),
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(220, 220, 230),
+                BackColor = Color.Transparent,
+            };
+
+            _hpBar = new Panel
+            {
+                Location = new Point(10, 50),
+                Size = new Size(240, 14),
+                BackColor = Color.FromArgb(20, 20, 30),
+            };
+            _hpBar.Paint += (s, e) => DrawHpBar(e.Graphics);
+
+            _ultLabel = new Label
+            {
+                Location = new Point(10, 66),
+                Size = new Size(240, 14),
+                Font = new Font("Segoe UI", 8F),
+                ForeColor = Color.FromArgb(255, 200, 90),
+                BackColor = Color.Transparent,
+            };
+
+            _ultBar = new Panel
+            {
+                Location = new Point(10, 82),
+                Size = new Size(240, 10),
+                BackColor = Color.FromArgb(20, 20, 30),
+            };
+            _ultBar.Paint += (s, e) => DrawUltBar(e.Graphics);
+
+            Controls.Add(_nameLabel);
+            Controls.Add(_hpLabel);
+            Controls.Add(_hpBar);
+            Controls.Add(_ultLabel);
+            Controls.Add(_ultBar);
+        }
+
+        public void UpdateCard()
+        {
+            _nameLabel.Text = _combatant.IsAlive() ? _combatant.Name : $"{_combatant.Name}  (KO)";
+            _hpLabel.Text = $"HP  {_combatant.Health} / {_combatant.MaxHealth}";
+            _hpBar.Invalidate();
+
+            UltimateSkill? ult = _member?.Ultimate ?? (_combatant is Boss b ? b.Ultimate : null);
+            if (ult != null)
+            {
+                _ultLabel.Visible = true;
+                _ultBar.Visible = true;
+                _ultLabel.Text = ult.IsCharged
+                    ? $"ULT  READY ({ult.Name})"
+                    : $"ULT  {ult.CurrentCharge} / {ult.MaxCharge}  ({ult.Name})";
+                _ultBar.Invalidate();
             }
             else
             {
-                _bossChargeLabel.Visible = false;
-                _bossChargeBar.Visible = false;
-                _btnTryUltimate.Enabled = false;
+                _ultLabel.Visible = false;
+                _ultBar.Visible = false;
             }
 
-            bool inCombat = _player.IsAlive() && _enemy.IsAlive();
-            _btnAttack.Enabled = inCombat;
-            _btnHeal.Enabled = inCombat;
+            BackColor = _combatant.IsAlive()
+                ? Color.FromArgb(40, 45, 70)
+                : Color.FromArgb(30, 25, 30);
         }
 
-        private void CheckOutcome()
+        public void SetActive(bool active)
         {
-            if (!_player.IsAlive())
+            BackColor = active
+                ? Color.FromArgb(60, 75, 110)
+                : _combatant.IsAlive() ? Color.FromArgb(40, 45, 70) : Color.FromArgb(30, 25, 30);
+        }
+
+        private void DrawHpBar(Graphics g)
+        {
+            double frac = _combatant.MaxHealth <= 0 ? 0 : (double)_combatant.Health / _combatant.MaxHealth;
+            if (frac < 0) frac = 0;
+            if (frac > 1) frac = 1;
+
+            int fillWidth = (int)(_hpBar.Width * frac);
+            if (fillWidth <= 0) return;
+
+            // Colour by HP fraction: green → yellow → red
+            Color fillColor = frac > 0.5 ? Color.FromArgb(80, 210, 120)
+                            : frac > 0.25 ? Color.FromArgb(240, 210, 90)
+                            : Color.FromArgb(230, 90, 90);
+
+            using (var brush = new LinearGradientBrush(
+                new Rectangle(0, 0, fillWidth, _hpBar.Height),
+                fillColor, ControlPaint.Dark(fillColor, 0.2f),
+                LinearGradientMode.Vertical))
             {
-                Console.WriteLine("\n*** YOU DIED ***\n");
-                MessageBox.Show("You died! Start a new game from the Game menu.",
-                    "Defeat", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                _btnAttack.Enabled = false;
-                _btnHeal.Enabled = false;
-                _btnPotion.Enabled = false;
-                return;
+                g.FillRectangle(brush, 0, 0, fillWidth, _hpBar.Height);
             }
+        }
 
-            if (!_enemy.IsAlive())
+        private void DrawUltBar(Graphics g)
+        {
+            UltimateSkill? ult = _member?.Ultimate ?? (_combatant is Boss b ? b.Ultimate : null);
+            if (ult == null) return;
+
+            double frac = ult.MaxCharge <= 0 ? 0 : (double)ult.CurrentCharge / ult.MaxCharge;
+            if (frac < 0) frac = 0;
+            if (frac > 1) frac = 1;
+
+            int fillWidth = (int)(_ultBar.Width * frac);
+            if (fillWidth <= 0) return;
+
+            Color gold = Color.FromArgb(255, 200, 90);
+            using (var brush = new LinearGradientBrush(
+                new Rectangle(0, 0, fillWidth, _ultBar.Height),
+                gold, ControlPaint.Dark(gold, 0.2f),
+                LinearGradientMode.Vertical))
             {
-                int gold = _enemy is Boss ? 100 : 20;
-                int exp = _enemy is Boss ? 200 : 50;
-                _player.EarnGold(gold);
-                _player.GainExperience(exp);
-
-                Console.WriteLine($"\n*** Victory! +{gold} gold, +{exp} exp ***\n");
-                UpdateUi();
-
-                MessageBox.Show($"You defeated {_enemy.Name}!\n\n+{gold} gold\n+{exp} exp",
-                    "Victory", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                g.FillRectangle(brush, 0, 0, fillWidth, _ultBar.Height);
             }
         }
     }

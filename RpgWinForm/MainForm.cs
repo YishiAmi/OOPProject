@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-using RpgLibrary;
 using RpgLibrary.Combat;
 using RpgLibrary.Contracts;
 using RpgLibrary.Exceptions;
@@ -14,7 +13,7 @@ namespace RpgWinForm
     public class MainForm : Form
     {
         // --- Game state 
-        private Character _player = null!;
+        private Hero _player = null!;
         private ICombatant _enemy = null!;
         private AttackSkill _slash = null!;
         private HealSkill _mend = null!;
@@ -390,7 +389,7 @@ namespace RpgWinForm
             _logBox.Clear();
             Console.WriteLine("========== NEW GAME ==========");
 
-            _player = new Character
+            _player = new Hero
             {
                 Name = "Aria",
                 Level = 1,
