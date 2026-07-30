@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace RpgLibrary.Contracts
 {
-    // Decides what an enemy does on its turn — picks the target and
+    // Decides what an enemy does on its turn - picks the target and
     // triggers the action. Swap it to change enemy behaviour without
     // touching BattleSystem or the Enemy classes.
     //
