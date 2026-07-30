@@ -5,7 +5,7 @@ using RpgLibrary.Exceptions;
 namespace RpgLibrary.Combat
 {
  
-    // Boss, a special Enemy with an UltimateSkill and enrage mode.
+    // Boss, a special Enemy with an UltimateSkill and enrage mode. whuaaaaaa
     // Shows: inheritance (Boss : Enemy) + composition (has-a Ultimate).
 
     public class Boss : Enemy
