@@ -1,14 +1,10 @@
 using System;
 using RpgLibrary.Contracts;
-
-
 namespace RpgLibrary.Combat
 {
-    // Hero , a simple class that implements ICombat.
-    // Having TWO different implementers (Hero and Enemy) is what
+    // Hero , a simple class that implements ICombatant.
 
-
-    public class Hero : ICombat
+    public class Hero : ICombatant
     {
      
         public string Name { get; private set; }
@@ -16,14 +12,16 @@ namespace RpgLibrary.Combat
         public int Health { get; private set; }
         public int Attack { get; private set; }
         public int Defense { get; private set; }
+        public int Speed { get; private set; }
 
-        public Hero(string name, int maxHealth, int attack, int defense)
+        public Hero(string name, int maxHealth, int attack, int defense, int speed = 10)
         {
             Name = name;
             MaxHealth = maxHealth;
             Health = maxHealth;   // start at full HP
             Attack = attack;
             Defense = defense;
+            Speed = speed;
         }
 
         public bool IsAlive()
@@ -51,7 +49,7 @@ namespace RpgLibrary.Combat
         }
 
     
-        public void BasicAttack(ICombat target)
+        public void BasicAttack(ICombatant target)
         {
             Console.WriteLine($"{Name} slashes at {target.Name}!");
             target.TakeDamage(Attack);
