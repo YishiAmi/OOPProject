@@ -1,34 +1,43 @@
 using System;
 using RpgLibrary.Contracts;
+using RPGGameLibrary.Items;
 
 namespace RpgLibrary.Combat
 {
-    // A lightweight fighter for the party. Implements ICombatant so
-    // any skill, ultimate, or battle system can work with it.
-    //
-    // Emits log lines through CombatLog (not Console.WriteLine), so a
-    // WinForms consumer can capture the messages without console noise.
+    // The player-side fighter. Has all the RPG bits: HP, attack,
+    // inventory, equipment, level, gold. Enemies use Enemy instead.
     public class Hero : ICombatant
     {
-        public string Name { get; private set; }
-        public int MaxHealth { get; private set; }
-        public int Health { get; private set; }
-        public int Attack { get; private set; }
-        public int Defense { get; private set; }
-        public int Speed { get; private set; }
+        public string Name { get; set; } = string.Empty;
+        public int MaxHealth { get; set; }
+        public int Health { get; set; }
+        public int Attack { get; set; }
+        public int Defense { get; set; }
+        public int Speed { get; set; }
+        public string Description { get; set; } = string.Empty;
 
+        public Weapon? EquippedWeapon { get; set; }
+        public Armor? EquippedArmor { get; set; }
+        public Inventory Inventory { get; set; }
+
+        public int Level { get; set; }
+        public int Experience { get; set; }
+        public int ExperienceToNextLevel { get; set; } = 100;
+        public int Gold { get; set; }
+
+        // parameterless for object-initializer usage
+        public Hero()
+        {
+            Inventory = new Inventory(20);
+        }
+
+        // convenience ctor for quick battle setups
         public Hero(string name, int maxHealth, int attack, int defense, int speed = 10)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Hero name cannot be blank.", nameof(name));
             if (maxHealth <= 0)
-                throw new ArgumentOutOfRangeException(nameof(maxHealth), "Max health must be > 0.");
-            if (attack < 0)
-                throw new ArgumentOutOfRangeException(nameof(attack));
-            if (defense < 0)
-                throw new ArgumentOutOfRangeException(nameof(defense));
-            if (speed < 0)
-                throw new ArgumentOutOfRangeException(nameof(speed));
+                throw new ArgumentOutOfRangeException(nameof(maxHealth));
 
             Name = name;
             MaxHealth = maxHealth;
@@ -36,6 +45,7 @@ namespace RpgLibrary.Combat
             Attack = attack;
             Defense = defense;
             Speed = speed;
+            Inventory = new Inventory(20);
         }
 
         public bool IsAlive() => Health > 0;
@@ -50,7 +60,7 @@ namespace RpgLibrary.Combat
             Health -= actual;
             if (Health < 0) Health = 0;
 
-            CombatLog.Write($" {Name} takes {actual} damage ({Health}/{MaxHealth} HP)");
+            CombatLog.Write($"  {Name} takes {actual} damage ({Health}/{MaxHealth} HP)");
         }
 
         public void Heal(int amount)
@@ -59,14 +69,66 @@ namespace RpgLibrary.Combat
 
             Health += amount;
             if (Health > MaxHealth) Health = MaxHealth;
-            CombatLog.Write($"  {Name} heals {amount} HP ({Health}/{MaxHealth})");
         }
 
         public void BasicAttack(ICombatant target)
         {
             if (target == null) return;
-            CombatLog.Write($"{Name} slashes at {target.Name}!");
+            string weapon = EquippedWeapon != null ? EquippedWeapon.Name : "bare hands";
+            CombatLog.Write($"{Name} strikes {target.Name} with {weapon}!");
             target.TakeDamage(Attack);
+        }
+
+        // ---- equipment ----
+        public void EquipWeapon(Weapon weapon)
+        {
+            if (EquippedWeapon != null) Attack -= EquippedWeapon.Damage;
+            EquippedWeapon = weapon;
+            Attack += weapon.Damage;
+        }
+
+        public void EquipArmor(Armor armor)
+        {
+            if (EquippedArmor != null) Defense -= EquippedArmor.Defense;
+            EquippedArmor = armor;
+            Defense += armor.Defense;
+        }
+
+        // ---- progression ----
+        public void GainExperience(int exp)
+        {
+            Experience += exp;
+
+            while (Experience >= ExperienceToNextLevel)
+            {
+                Experience -= ExperienceToNextLevel;
+                LevelUp();
+                ExperienceToNextLevel += 50;
+            }
+        }
+
+        public void LevelUp()
+        {
+            Level++;
+            MaxHealth += 10;
+            Health = MaxHealth;
+            Attack += 2;
+            Defense += 2;
+            Speed += 1;
+            CombatLog.Write($"{Name} level up!");
+        }
+
+        // ---- economy ----
+        public void EarnGold(int amount)
+        {
+            if (amount > 0) Gold += amount;
+        }
+
+        public bool SpendGold(int amount)
+        {
+            if (amount <= 0 || Gold < amount) return false;
+            Gold -= amount;
+            return true;
         }
     }
 }
