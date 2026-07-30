@@ -1,12 +1,13 @@
+using RpgLibrary.Contracts;
 namespace RPGGameLibrary.Items
 {
-    public class Item
+    public class Item : IShopItem
     {
         public string Name { get; set; }
-
         public string Description { get; set; }
-
         public int Value { get; set; }
+    
+        public int Price => Value;
 
 
         public Item(
