@@ -1,43 +1,120 @@
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using RpgLibrary.Contracts;
 
 namespace RpgLibrary.World;
 
-public class Shop
+public sealed class Shop
 {
+    private readonly List<ShopSlot> _inventory = new();
+    private readonly ReadOnlyCollection<ShopSlot> _inventoryView;
+
     public string ShopName { get; }
-    public List<ShopSlot> Inventory { get; } = new();
+    public IReadOnlyList<ShopSlot> Inventory => _inventoryView;
 
     public Shop(string shopName)
     {
+        if (string.IsNullOrWhiteSpace(shopName))
+        {
+            throw new ArgumentException("A shop name is required.", nameof(shopName));
+        }
+
         ShopName = shopName;
+        _inventoryView = _inventory.AsReadOnly();
     }
 
-    public bool Buy(IShopItem item, ref int playerGold)
+    public ShopSlot AddStock(IShopItem item, int quantity)
     {
-        if (playerGold >= item.Price)
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (item.Price < 0)
         {
-            playerGold -= item.Price;
-            return true;
+            throw new ArgumentOutOfRangeException(
+                nameof(item),
+                "An item's price cannot be negative.");
         }
-        return false;
+
+        if (quantity < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(quantity),
+                "Stock quantity must be at least one.");
+        }
+
+        ShopSlot? existingSlot = _inventory.Find(
+            slot => ReferenceEquals(slot.Item, item));
+
+        if (existingSlot is not null)
+        {
+            existingSlot.Restock(quantity);
+            return existingSlot;
+        }
+
+        ShopSlot newSlot = new(item, quantity);
+        _inventory.Add(newSlot);
+        return newSlot;
+    }
+
+    public bool RemoveStock(IShopItem item, int quantity)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (quantity < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(quantity),
+                "The quantity to remove must be at least one.");
+        }
+
+        ShopSlot? slot = _inventory.Find(
+            candidate => ReferenceEquals(candidate.Item, item));
+
+        return slot is not null && slot.TryRemove(quantity);
+    }
+
+    internal PurchaseStatus TryTake(
+        ShopSlot slot,
+        int availableGold,
+        out int purchasePrice)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        purchasePrice = 0;
+
+        if (availableGold < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(availableGold),
+                "Available gold cannot be negative.");
+        }
+
+        if (!_inventory.Contains(slot))
+        {
+            return PurchaseStatus.ItemNotSold;
+        }
+
+        int currentPrice = slot.Item.Price;
+
+        if (currentPrice < 0)
+        {
+            throw new InvalidOperationException(
+                "A stocked item's price cannot be negative.");
+        }
+
+        if (!slot.IsInStock)
+        {
+            return PurchaseStatus.OutOfStock;
+        }
+
+        if (availableGold < currentPrice)
+        {
+            return PurchaseStatus.InsufficientGold;
+        }
+
+        if (!slot.TryTakeOne())
+        {
+            return PurchaseStatus.OutOfStock;
+        }
+
+        purchasePrice = currentPrice;
+        return PurchaseStatus.Success;
     }
 }
-
-/*
-    Notes:
-
-    -   since harith and ammar are working on their own pace I had them follow an interface so
-        I can carry on with my code without relying on them, and we still getting brownie points
-        for using interfaces >:).
-
-    -   having a list<> on get; only still allows you to interact with it, just not set a new list
-        which inturn deletes the whole shop.
-
-    -   inventory is something to pause and think of. my initial plan is just make it so we build
-        of the nice stuff of list and literally add items x times where x is our inventory count.
-
-    -   update: where is the fun in the previous I'll just use an industry standart simple slot system.
-        that would shift all the other namespaces dependancies into a lesser class, sweet!
-
-*/

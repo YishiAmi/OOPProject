@@ -2,34 +2,89 @@ namespace RpgLibrary.World;
 
 public abstract class Quest
 {
-    public string Title { get; }  
+    public string Title { get; }
     public string Objective { get; }
-    public bool Completed { get; protected set; }
     public int GoldReward { get; }
+    public int RequiredProgress { get; }
+    public int CurrentProgress { get; private set; }
+    public QuestStatus Status { get; private set; }
+    public abstract QuestType Type { get; }
 
-    public Quest(string title, string objective, int goldReward)
+    public bool Completed => Status == QuestStatus.Completed;
+
+    public bool CanComplete =>
+        Status == QuestStatus.Active &&
+        CurrentProgress >= RequiredProgress;
+
+    protected Quest(
+        string title,
+        string objective,
+        int goldReward,
+        int requiredProgress = 1)
     {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new ArgumentException("A quest title is required.", nameof(title));
+        }
+
+        if (string.IsNullOrWhiteSpace(objective))
+        {
+            throw new ArgumentException("A quest objective is required.", nameof(objective));
+        }
+
+        if (goldReward < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(goldReward),
+                "A quest reward cannot be negative.");
+        }
+
+        if (requiredProgress < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(requiredProgress),
+                "Required progress must be at least one.");
+        }
+
         Title = title;
         Objective = objective;
         GoldReward = goldReward;
-        Completed = false;
+        RequiredProgress = requiredProgress;
+        Status = QuestStatus.Available;
     }
 
-    public virtual void Complete()
+    internal bool Accept()
     {
-        Completed = true;
+        if (Status != QuestStatus.Available)
+        {
+            return false;
+        }
+
+        Status = QuestStatus.Active;
+        return true;
+    }
+
+    internal bool AddProgress(int amount)
+    {
+        if (Status != QuestStatus.Active || amount <= 0)
+        {
+            return false;
+        }
+
+        long updatedProgress = (long)CurrentProgress + amount;
+        CurrentProgress = (int)Math.Min(RequiredProgress, updatedProgress);
+
+        return true;
+    }
+
+    internal bool Complete()
+    {
+        if (!CanComplete)
+        {
+            return false;
+        }
+
+        Status = QuestStatus.Completed;
+        return true;
     }
 }
-
-
-/*
-    Notes:
-
-    -   readonly is for fields (raw variables). if you wrote public readonly string title, 
-        you would be exposing a raw piece of data directly to the outside world essenially
-        they are the same but hey a nice technical optimization is always appreciated.
-    
-    -   why not make quest abstract and have main and side quests to demonstrait inhertence,
-        sweet more brownie points. oh and in that case make Completed protected rather than privately set.
-
-*/

@@ -1,95 +1,229 @@
-using System;
+using System.Collections.ObjectModel;
 using RpgLibrary.Contracts;
 
-namespace RpgLibrary.World
+namespace RpgLibrary.World;
+
+public sealed class GameManager
 {
-    public class GameManager
+    private readonly List<Quest> _activeQuests = new();
+    private readonly List<Quest> _completedQuests = new();
+    private readonly ReadOnlyCollection<Quest> _activeQuestView;
+    private readonly ReadOnlyCollection<Quest> _completedQuestView;
+
+    public ICombatant Player { get; }
+    public Map CurrentMap { get; private set; }
+    public int PlayerGold { get; private set; }
+    public IReadOnlyList<Quest> ActiveQuests => _activeQuestView;
+    public IReadOnlyList<Quest> CompletedQuests => _completedQuestView;
+
+    public GameManager(
+        ICombatant player,
+        Map startingMap,
+        int startingGold = 0)
     {
-        public ICombatant Player { get; }
-        public Map CurrentMap { get; private set; }
-        public int PlayerGold { get; private set; } 
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(startingMap);
 
-        public GameManager(ICombatant player, Map startingMap)
+        if (startingGold < 0)
         {
-            Player = player;
-            CurrentMap = startingMap;
-            PlayerGold = 100; // Starting gold for testing
+            throw new ArgumentOutOfRangeException(
+                nameof(startingGold),
+                "Starting gold cannot be negative.");
         }
 
-        public void ChangeMap(Map newMap)
+        Player = player;
+        CurrentMap = startingMap;
+        PlayerGold = startingGold;
+        _activeQuestView = _activeQuests.AsReadOnly();
+        _completedQuestView = _completedQuests.AsReadOnly();
+    }
+
+    public Map ChangeMap(Map newMap)
+    {
+        ArgumentNullException.ThrowIfNull(newMap);
+        CurrentMap = newMap;
+        return CurrentMap;
+    }
+
+    public NpcInteractionResult TalkToNpc(NPC npc)
+    {
+        ArgumentNullException.ThrowIfNull(npc);
+
+        if (!CurrentMap.ContainsNpc(npc))
         {
-            CurrentMap = newMap;
-            Console.WriteLine($"Traveling to {CurrentMap.MapName} (Difficulty: {CurrentMap.Difficulty})...");
+            return new NpcInteractionResult(
+                NpcInteractionStatus.NpcNotInCurrentMap,
+                npc,
+                string.Empty,
+                null,
+                false);
         }
 
-        public void TalkToNPC(NPC npc)
+        Quest? offeredQuest = npc.OfferedQuest;
+
+        return new NpcInteractionResult(
+            NpcInteractionStatus.Success,
+            npc,
+            npc.Talk(),
+            offeredQuest,
+            offeredQuest?.Status == QuestStatus.Available);
+    }
+
+    public QuestActionResult AcceptQuest(NPC npc)
+    {
+        ArgumentNullException.ThrowIfNull(npc);
+
+        if (!CurrentMap.ContainsNpc(npc))
         {
-            Console.WriteLine($"[{npc.Name}]: {npc.Talk()}");
-            
-            if (npc.OfferedQuest != null && !npc.OfferedQuest.Completed)
-            {
-                Console.WriteLine($"--> New Quest Acquired: {npc.OfferedQuest.Title} ({npc.OfferedQuest.Objective})");
-            }
+            return QuestResult(
+                QuestActionStatus.NpcNotInCurrentMap,
+                null);
         }
 
-        public void CompleteQuest(Quest quest)
+        Quest? quest = npc.OfferedQuest;
+
+        if (quest is null)
         {
-            if (!quest.Completed)
-            {
-                quest.Complete(); // Triggers the virtual/override logic we discussed
-                PlayerGold += quest.GoldReward;
-                Console.WriteLine($"Quest '{quest.Title}' completed! Earned {quest.GoldReward} gold.");
-            }
-            else
-            {
-                Console.WriteLine($"Quest '{quest.Title}' is already completed.");
-            }
+            return QuestResult(QuestActionStatus.NoQuestOffered);
         }
 
-        public void EnterShop(Shop shop, IShopItem itemToBuy)
+        if (quest.Status == QuestStatus.Completed)
         {
-            Console.WriteLine($"Entering {shop.ShopName}...");
-            int currentGold = PlayerGold;
-            
-            if (shop.Buy(itemToBuy, ref currentGold))
-            {
-                PlayerGold = currentGold;
-                Console.WriteLine($"Successfully bought {itemToBuy.Name}. Remaining Gold: {PlayerGold}");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to buy {itemToBuy.Name}. Not enough gold or item unavailable.");
-            }
+            return QuestResult(QuestActionStatus.AlreadyCompleted, quest);
         }
 
-        public void Attack(ICombatant target)
+        if (quest.Status == QuestStatus.Active)
         {
-            Console.WriteLine($"{Player.Name} attacks {target.Name}!");
-            
-            // Change this on the game later
-            target.TakeDamage(15); 
-            
-            if (!target.IsAlive())
-            {
-                Console.WriteLine($"{target.Name} has been defeated!");
-            }
-            else
-            {
-                Console.WriteLine($"{target.Name} has {target.Health} HP remaining.");
-            }
+            return QuestResult(QuestActionStatus.AlreadyAccepted, quest);
         }
+
+        if (!quest.Accept())
+        {
+            return QuestResult(QuestActionStatus.AlreadyAccepted, quest);
+        }
+
+        _activeQuests.Add(quest);
+        return QuestResult(QuestActionStatus.Success, quest);
+    }
+
+    public QuestActionResult AddQuestProgress(Quest quest, int amount)
+    {
+        ArgumentNullException.ThrowIfNull(quest);
+
+        if (amount <= 0)
+        {
+            return QuestResult(QuestActionStatus.InvalidProgress, quest);
+        }
+
+        if (quest.Status == QuestStatus.Completed)
+        {
+            return QuestResult(QuestActionStatus.AlreadyCompleted, quest);
+        }
+
+        if (!_activeQuests.Contains(quest) ||
+            quest.Status != QuestStatus.Active)
+        {
+            return QuestResult(QuestActionStatus.QuestNotActive, quest);
+        }
+
+        return quest.AddProgress(amount)
+            ? QuestResult(QuestActionStatus.Success, quest)
+            : QuestResult(QuestActionStatus.InvalidProgress, quest);
+    }
+
+    public QuestActionResult CompleteQuest(Quest quest)
+    {
+        ArgumentNullException.ThrowIfNull(quest);
+
+        if (quest.Status == QuestStatus.Completed)
+        {
+            return QuestResult(QuestActionStatus.AlreadyCompleted, quest);
+        }
+
+        if (!_activeQuests.Contains(quest) ||
+            quest.Status != QuestStatus.Active)
+        {
+            return QuestResult(QuestActionStatus.QuestNotActive, quest);
+        }
+
+        if (!quest.CanComplete)
+        {
+            return QuestResult(QuestActionStatus.RequirementsNotMet, quest);
+        }
+
+        int updatedGold = checked(PlayerGold + quest.GoldReward);
+
+        if (!quest.Complete())
+        {
+            return QuestResult(QuestActionStatus.RequirementsNotMet, quest);
+        }
+
+        _activeQuests.Remove(quest);
+        _completedQuests.Add(quest);
+        PlayerGold = updatedGold;
+
+        return QuestResult(
+            QuestActionStatus.Success,
+            quest,
+            quest.GoldReward);
+    }
+
+    public Shop? GetCurrentShop() => CurrentMap.LocalShop;
+
+    public PurchaseResult BuyItem(ShopSlot slot)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+
+        Shop? shop = GetCurrentShop();
+
+        if (shop is null)
+        {
+            return new PurchaseResult(
+                PurchaseStatus.ShopUnavailable,
+                slot.Item,
+                0,
+                PlayerGold);
+        }
+
+        PurchaseStatus status = shop.TryTake(
+            slot,
+            PlayerGold,
+            out int purchasePrice);
+
+        if (status == PurchaseStatus.Success)
+        {
+            PlayerGold -= purchasePrice;
+        }
+
+        return new PurchaseResult(
+            status,
+            slot.Item,
+            purchasePrice,
+            PlayerGold);
+    }
+
+    public int AwardGold(int amount)
+    {
+        if (amount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                "Awarded gold cannot be negative.");
+        }
+
+        PlayerGold = checked(PlayerGold + amount);
+        return PlayerGold;
+    }
+
+    private QuestActionResult QuestResult(
+        QuestActionStatus status,
+        Quest? quest = null,
+        int goldAwarded = 0)
+    {
+        return new QuestActionResult(
+            status,
+            quest,
+            goldAwarded,
+            PlayerGold);
     }
 }
-
-/*
-    Notes:
-
-    -   the game manger can act as a console theoritcall the same way you'd control everything in 
-        a minecraft server but is that how you want it to be or something to be used by main game demo
-        [update: if you use the latter then you essentially implement a facade class, two birds one stone]
-
-    -   your idea for the facade is to abstract as many stuff as you can so long it makes sense
-    -   methods planned ChangeMap, EnterShop, Attack, TalkToNPC, CompleteQuest
-    -   keep in mind you can also do the same for shop
-
-*/
