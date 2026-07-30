@@ -1,29 +1,25 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using RpgLibrary.Contracts;
 using RpgLibrary.Exceptions;
 
 namespace RpgLibrary.Combat
 {
-    // PartyMember bundles a hero-side combatant with the skills the player
-    // can pick during that hero's turn, plus an optional Ultimate.
-    public class PartyMember
-    {
-        public ICombatant Combatant { get; }
-        public List<Skill> Skills { get; }
-        public UltimateSkill? Ultimate { get; }
-
-        public PartyMember(ICombatant combatant,
-                           IEnumerable<Skill>? skills = null,
-                           UltimateSkill? ultimate = null)
-        {
-            Combatant = combatant;
-            Skills = skills?.ToList() ?? new List<Skill>();
-            Ultimate = ultimate;
-        }
-    }
-   
+    // BattleSystem — turn-based combat orchestrator.
+    //
+    // Knows the RULES of turn-based combat:
+    //   1. Every round, sort combatants by Speed (fastest first).
+    //   2. Each living combatant acts once.
+    //   3. Party actions come from a menu the UI presents.
+    //   4. Enemy actions come from a pluggable AI strategy.
+    //   5. Battle ends when one side has no living members,
+    //      OR when MaxRounds is exceeded (Timeout).
+    //
+    // Knows NOTHING about:
+    //   - How to draw the menu     (that's IBattleUI)
+    //   - How enemies decide       (that's IEnemyStrategy)
+    //   - What targets a skill wants (that's Skill.Target)
+    //   - How much to charge each turn (that's BattleSettings)
     public class BattleSystem
     {
         private readonly List<PartyMember> _party;
@@ -33,70 +29,106 @@ namespace RpgLibrary.Combat
         private readonly BattleSettings _settings;
 
         public int Round { get; private set; }
-        public bool PartyWon { get; private set; }
-        public bool BattleOver { get; private set; }
+        public BattleOutcome Outcome { get; private set; } = BattleOutcome.Undecided;
+        public bool PartyWon => Outcome == BattleOutcome.Victory;
+        public bool BattleOver => Outcome != BattleOutcome.Undecided;
 
         public event Action<BattleState>? RoundStarted;
         public event Action<ICombatant>? TurnStarted;
-        public event Action<bool, int>? BattleEnded;
+        public event Action<BattleOutcome, int>? BattleEnded;
 
         public BattleSystem(
-            IEnumerable<PartyMember> party,
-            IEnumerable<ICombatant> enemies,
-            IBattleUI? ui = null,
-            IEnemyStrategy? enemyStrategy = null,
-            BattleSettings? settings = null)
+            List<PartyMember> party,
+            List<ICombatant> enemies,
+            IBattleUI ui,
+            IEnemyStrategy enemyStrategy,
+            BattleSettings settings)
         {
-            _party = party.ToList();
-            _enemies = enemies.ToList();
-            _ui = ui ?? new ConsoleBattleUI();
-            _enemyStrategy = enemyStrategy ?? new RandomTargetStrategy();
-            _settings = settings ?? new BattleSettings();
+            if (party == null) throw new ArgumentNullException(nameof(party));
+            if (enemies == null) throw new ArgumentNullException(nameof(enemies));
+            if (ui == null) throw new ArgumentNullException(nameof(ui),
+                "BattleSystem no longer defaults to ConsoleBattleUI — pass one explicitly.");
+            if (enemyStrategy == null) throw new ArgumentNullException(nameof(enemyStrategy));
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+            if (party.Count == 0) throw new ArgumentException("Party cannot be empty.", nameof(party));
+            if (enemies.Count == 0) throw new ArgumentException("Enemy list cannot be empty.", nameof(enemies));
+
+            _party = party;
+            _enemies = enemies;
+            _ui = ui;
+            _enemyStrategy = enemyStrategy;
+            _settings = settings;
         }
 
         // ---------- MAIN LOOP ----------
         public void Run()
         {
-            _ui.ShowIntro(BuildState());
+            // Route every domain-class log message through the UI while
+            // this battle is running. Restore the previous sink at the
+            // end so we play nice with other consumers.
+            Action<string> previousSink = CombatLog.Sink;
+            CombatLog.Sink = _ui.ShowMessage;
 
-            while (PartyAlive() && EnemiesAlive())
+            try
             {
-                Round++;
-                if (_settings.MaxRounds > 0 && Round > _settings.MaxRounds) break;
+                _ui.ShowIntro(BuildState());
 
-                var state = BuildState();
-                _ui.ShowRoundStart(state);
-                RoundStarted?.Invoke(state);
-
-                foreach (var actor in state.TurnOrder)
+                while (PartyAlive() && EnemiesAlive())
                 {
-                    if (!actor.IsAlive()) continue;
-                    if (!PartyAlive() || !EnemiesAlive()) break;
-
-                    bool isPartyMember = _party.Any(p => ReferenceEquals(p.Combatant, actor));
-                    _ui.ShowActorTurn(actor, isPartyMember);
-                    TurnStarted?.Invoke(actor);
-
-                    if (isPartyMember)
+                    // Check the round cap BEFORE incrementing so Round
+                    // does not overshoot on a timeout.
+                    if (_settings.MaxRounds > 0 && Round >= _settings.MaxRounds)
                     {
-                        var member = _party.First(p => ReferenceEquals(p.Combatant, actor));
-                        PlayerTurn(member);
-                        member.Ultimate?.Charge(_settings.UltimateChargePerTurn);
+                        Outcome = BattleOutcome.Timeout;
+                        break;
                     }
-                    else
+
+                    Round++;
+
+                    BattleState state = BuildState();
+                    _ui.ShowRoundStart(state);
+                    RoundStarted?.Invoke(state);
+
+                    foreach (ICombatant actor in state.TurnOrder)
                     {
-                        _enemyStrategy.TakeTurn(
-                            actor,
-                            _enemies.Where(e => e.IsAlive()).ToList(),
-                            _party.Select(p => p.Combatant).Where(c => c.IsAlive()).ToList());
+                        if (!actor.IsAlive()) continue;
+                        if (!PartyAlive() || !EnemiesAlive()) break;
+
+                        PartyMember? member = FindPartyMember(actor);
+                        bool isHero = member != null;
+
+                        _ui.ShowActorTurn(actor, isHero);
+                        TurnStarted?.Invoke(actor);
+
+                        if (isHero)
+                        {
+                            PlayerTurn(member!);
+                            if (member!.Ultimate != null)
+                                member.Ultimate.Charge(_settings.UltimateChargePerTurn);
+                        }
+                        else
+                        {
+                            EnemyTurn(actor);
+                        }
                     }
                 }
-            }
 
-            BattleOver = true;
-            PartyWon = PartyAlive();
-            _ui.ShowBattleEnd(PartyWon, Round);
-            BattleEnded?.Invoke(PartyWon, Round);
+                // If the loop ended without a timeout, decide the outcome
+                // from who is still standing.
+                if (Outcome == BattleOutcome.Undecided)
+                {
+                    if (!EnemiesAlive() && PartyAlive())      Outcome = BattleOutcome.Victory;
+                    else if (!PartyAlive() && EnemiesAlive()) Outcome = BattleOutcome.Defeat;
+                    else                                        Outcome = BattleOutcome.Timeout;
+                }
+
+                _ui.ShowBattleEnd(Outcome, Round);
+                BattleEnded?.Invoke(Outcome, Round);
+            }
+            finally
+            {
+                CombatLog.Sink = previousSink;
+            }
         }
 
         // ---------- STATE ----------
@@ -107,125 +139,177 @@ namespace RpgLibrary.Combat
 
         private List<ICombatant> BuildTurnOrder()
         {
-            var all = _party.Select(p => p.Combatant).Concat(_enemies);
-            if (_settings.RemoveKOFromTurnOrder)
-                all = all.Where(c => c.IsAlive());
-            return all.OrderByDescending(c => c.Speed).ToList();
+            List<ICombatant> all = new List<ICombatant>();
+
+            foreach (PartyMember m in _party)
+            {
+                if (!_settings.RemoveKOFromTurnOrder || m.Combatant.IsAlive())
+                    all.Add(m.Combatant);
+            }
+            foreach (ICombatant e in _enemies)
+            {
+                if (!_settings.RemoveKOFromTurnOrder || e.IsAlive())
+                    all.Add(e);
+            }
+
+            all.Sort((a, b) => b.Speed - a.Speed);
+            return all;
         }
 
-        private bool PartyAlive()   => _party.Any(p => p.Combatant.IsAlive());
-        private bool EnemiesAlive() => _enemies.Any(e => e.IsAlive());
+        private PartyMember? FindPartyMember(ICombatant actor)
+        {
+            foreach (PartyMember m in _party)
+            {
+                if (ReferenceEquals(m.Combatant, actor)) return m;
+            }
+            return null;
+        }
+
+        private bool PartyAlive()
+        {
+            foreach (PartyMember m in _party)
+                if (m.Combatant.IsAlive()) return true;
+            return false;
+        }
+
+        private bool EnemiesAlive()
+        {
+            foreach (ICombatant e in _enemies)
+                if (e.IsAlive()) return true;
+            return false;
+        }
 
         // ---------- PLAYER TURN ----------
         private void PlayerTurn(PartyMember member)
         {
-            var options = BuildActionMenu(member);
-            var chosen = _ui.ChooseAction(member, options);
+            List<BattleActionOption> options = BuildActionMenu(member);
+            BattleActionOption? chosen = _ui.ChooseAction(member, options);
             if (chosen == null) return;
 
-            switch (chosen.Kind)
-            {
-                case BattleActionKind.Attack:   DoAttack(member); break;
-                case BattleActionKind.Skill:    DoSkill(member); break;
-                case BattleActionKind.Ultimate: DoUltimate(member); break;
-                case BattleActionKind.Defend:   _ui.ShowMessage($"  {member.Combatant.Name} braces for impact."); break;
-                case BattleActionKind.Flee:     _ui.ShowMessage($"  {member.Combatant.Name} tries to flee!"); break;
-            }
+            if (chosen.Kind == BattleActionKind.Attack)   DoAttack(member);
+            else if (chosen.Kind == BattleActionKind.Skill)    DoSkill(member);
+            else if (chosen.Kind == BattleActionKind.Ultimate) DoUltimate(member);
         }
 
-        private IReadOnlyList<BattleActionOption> BuildActionMenu(PartyMember member)
+        // Build the list of enabled actions for this hero.
+        // Defend and Flee are not offered yet — implement them in
+        // BuildActionMenu when the mechanics exist.
+        private List<BattleActionOption> BuildActionMenu(PartyMember member)
         {
-            var list = new List<BattleActionOption>();
+            List<BattleActionOption> list = new List<BattleActionOption>();
+
             list.Add(new BattleActionOption(BattleActionKind.Attack, "Attack"));
+
             if (member.Skills.Count > 0)
                 list.Add(new BattleActionOption(BattleActionKind.Skill, "Skill"));
+
             if (member.Ultimate != null)
             {
-                string detail = member.Ultimate.IsCharged
+                bool ready = member.Ultimate.IsCharged;
+                string detail = ready
                     ? "READY"
                     : $"{member.Ultimate.CurrentCharge}/{member.Ultimate.MaxCharge}";
+
                 list.Add(new BattleActionOption(
                     BattleActionKind.Ultimate,
                     $"Ultimate ({member.Ultimate.Name})",
-                    enabled: member.Ultimate.IsCharged,
+                    enabled: ready,
                     detail: detail));
             }
+
             return list;
         }
 
         private void DoAttack(PartyMember member)
         {
-            var target = PickByTargetType(member, TargetType.SingleEnemy);
-            if (target == null) return;
-            member.Combatant.BasicAttack(target);
+            ICombatant? target = PickEnemyTarget();
+            if (target != null) member.Combatant.BasicAttack(target);
         }
 
         private void DoSkill(PartyMember member)
         {
-            var skill = _ui.ChooseSkill(member.Skills);
-            if (skill == null) return;
-            ApplySkill(member, skill);
+            // The UI's ChooseSkill takes a concrete List<Skill>, so
+            // copy the read-only view into one before passing it in.
+            List<Skill> skills = new List<Skill>(member.Skills);
+            Skill? skill = _ui.ChooseSkill(skills);
+            if (skill != null) ApplySkill(member, skill);
         }
 
         private void DoUltimate(PartyMember member)
         {
             if (member.Ultimate == null) return;
-            try { ApplySkill(member, member.Ultimate); }
-            catch (UltimateNotChargedException ex) { _ui.ShowMessage($"  [!] {ex.Message}"); }
+
+            try
+            {
+                ApplySkill(member, member.Ultimate);
+            }
+            catch (UltimateNotChargedException ex)
+            {
+                _ui.ShowMessage($"  [!] {ex.Message}");
+            }
         }
 
+        // Apply a skill by asking it who it targets.
+        // No `is HealSkill` type checks anywhere.
         private void ApplySkill(PartyMember member, Skill skill)
         {
-            var caster = member.Combatant;
-            switch (skill.Target)
+            ICombatant caster = member.Combatant;
+
+            if (skill.Target == TargetType.Self)
             {
-                case TargetType.Self:
-                    skill.Use(caster, caster);
-                    break;
-
-                case TargetType.SingleAlly:
-                {
-                    var t = PickByTargetType(member, TargetType.SingleAlly);
-                    if (t != null) skill.Use(caster, t);
-                    break;
-                }
-
-                case TargetType.SingleEnemy:
-                {
-                    var t = PickByTargetType(member, TargetType.SingleEnemy);
-                    if (t != null) skill.Use(caster, t);
-                    break;
-                }
-
-                case TargetType.AllAllies:
-                    foreach (var ally in _party.Select(p => p.Combatant).Where(c => c.IsAlive()))
-                        skill.Use(caster, ally);
-                    break;
-
-                case TargetType.AllEnemies:
-                    foreach (var foe in _enemies.Where(e => e.IsAlive()))
-                        skill.Use(caster, foe);
-                    break;
+                skill.Use(caster, caster);
+            }
+            else if (skill.Target == TargetType.SingleEnemy)
+            {
+                ICombatant? t = PickEnemyTarget();
+                if (t != null) skill.Use(caster, t);
+            }
+            else if (skill.Target == TargetType.SingleAlly)
+            {
+                ICombatant? t = PickAllyTarget(caster);
+                if (t != null) skill.Use(caster, t);
+            }
+            else if (skill.Target == TargetType.AllEnemies)
+            {
+                foreach (ICombatant e in _enemies)
+                    if (e.IsAlive()) skill.Use(caster, e);
+            }
+            else if (skill.Target == TargetType.AllAllies)
+            {
+                foreach (PartyMember m in _party)
+                    if (m.Combatant.IsAlive()) skill.Use(caster, m.Combatant);
             }
         }
 
-        private ICombatant? PickByTargetType(PartyMember member, TargetType type)
+        private ICombatant? PickEnemyTarget()
         {
-            switch (type)
-            {
-                case TargetType.SingleEnemy:
-                    return _ui.ChooseTarget(_enemies.Where(e => e.IsAlive()).ToList(), "Choose enemy");
-                case TargetType.SingleAlly:
-                    return _ui.ChooseTarget(
-                        _party.Select(p => p.Combatant)
-                              .Where(c => c.IsAlive() && !ReferenceEquals(c, member.Combatant))
-                              .ToList(),
-                        "Choose ally");
-                case TargetType.Self:
-                    return member.Combatant;
-                default:
-                    return null;
-            }
+            List<ICombatant> alive = new List<ICombatant>();
+            foreach (ICombatant e in _enemies)
+                if (e.IsAlive()) alive.Add(e);
+            return _ui.ChooseTarget(alive, "Choose enemy");
+        }
+
+        private ICombatant? PickAllyTarget(ICombatant self)
+        {
+            List<ICombatant> alive = new List<ICombatant>();
+            foreach (PartyMember m in _party)
+                if (m.Combatant.IsAlive() && !ReferenceEquals(m.Combatant, self))
+                    alive.Add(m.Combatant);
+            return _ui.ChooseTarget(alive, "Choose ally");
+        }
+
+        // ---------- ENEMY TURN ----------
+        private void EnemyTurn(ICombatant actor)
+        {
+            List<ICombatant> aliveAllies = new List<ICombatant>();
+            List<ICombatant> aliveHeroes = new List<ICombatant>();
+
+            foreach (ICombatant e in _enemies)
+                if (e.IsAlive()) aliveAllies.Add(e);
+            foreach (PartyMember m in _party)
+                if (m.Combatant.IsAlive()) aliveHeroes.Add(m.Combatant);
+
+            _enemyStrategy.TakeTurn(actor, aliveAllies, aliveHeroes);
         }
     }
 }

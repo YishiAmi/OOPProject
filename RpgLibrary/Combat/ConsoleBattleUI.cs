@@ -54,7 +54,6 @@ namespace RpgLibrary.Combat
                 Console.WriteLine($"    - {Pad(e.Name, 16)} {HpBar(e)}{extra}{ko}");
             }
 
-            // Print turn order line: Name(Speed) -> Name(Speed) -> ...
             string order = "";
             for (int i = 0; i < state.TurnOrder.Count; i++)
             {
@@ -78,7 +77,7 @@ namespace RpgLibrary.Combat
 
         public virtual BattleActionOption? ChooseAction(PartyMember member, IReadOnlyList<BattleActionOption> options)
         {
-            Console.WriteLine("  Choose an action:");
+            Console.WriteLine("Choose an action:");
             for (int i = 0; i < options.Count; i++)
             {
                 BattleActionOption opt = options[i];
@@ -122,14 +121,18 @@ namespace RpgLibrary.Combat
             return skills[pick - 1];
         }
 
-        public virtual void ShowBattleEnd(bool partyWon, int rounds)
+        public virtual void ShowBattleEnd(BattleOutcome outcome, int rounds)
         {
             Console.WriteLine();
             Console.WriteLine("============================================================");
-            if (partyWon)
+            if (outcome == BattleOutcome.Victory)
                 Console.WriteLine("               *** VICTORY — party wins! ***");
-            else
+            else if (outcome == BattleOutcome.Defeat)
                 Console.WriteLine("               *** DEFEAT — party wiped out. ***");
+            else if (outcome == BattleOutcome.Timeout)
+                Console.WriteLine("               *** TIMEOUT — round limit reached. ***");
+            else
+                Console.WriteLine("               *** UNDECIDED ***");
             Console.WriteLine($"                    Rounds fought: {rounds}");
             Console.WriteLine("============================================================");
         }

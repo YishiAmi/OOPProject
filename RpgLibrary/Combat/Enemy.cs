@@ -1,29 +1,37 @@
 using System;
-using RpgLibrary.Contracts;
 using System.Collections.Generic;
+using RpgLibrary.Contracts;
 
 namespace RpgLibrary.Combat
 {
-  
-    // i use abstract enemy, the shared base for all enemies.
-    // Implements ICombatant, so skills can target any Enemy.
+    // Shared base for all enemies. Implements ICombatant so any skill
+    // can target any Enemy.
     public abstract class Enemy : ICombatant
     {
-        public string Name {get; private set;}
-        public int MaxHealth {get; private set;}
-        public int Health {get; protected set;}
-        public int Attack {get; protected set;}   // subclass may boost
-        public int Defense {get; private set;}
-        public int Speed {get; private set;}
+        public string Name { get; private set; }
+        public int MaxHealth { get; private set; }
+        public int Health { get; protected set; }
+        public int Attack { get; protected set; }
+        public int Defense { get; private set; }
+        public int Speed { get; private set; }
 
+        protected List<Skill> Skills { get; }
 
-        protected List<Skill> Skills { get; private set; }
-
-        // Rotates through skills each turn
         private int _nextSkillIndex;
 
         protected Enemy(string name, int maxHealth, int attack, int defense, int speed = 8)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Enemy name cannot be blank.", nameof(name));
+            if (maxHealth <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxHealth), "Max health must be > 0.");
+            if (attack < 0)
+                throw new ArgumentOutOfRangeException(nameof(attack), "Attack cannot be negative.");
+            if (defense < 0)
+                throw new ArgumentOutOfRangeException(nameof(defense), "Defense cannot be negative.");
+            if (speed < 0)
+                throw new ArgumentOutOfRangeException(nameof(speed), "Speed cannot be negative.");
+
             Name = name;
             MaxHealth = maxHealth;
             Health = maxHealth;
@@ -34,35 +42,35 @@ namespace RpgLibrary.Combat
             _nextSkillIndex = 0;
         }
 
-        public bool IsAlive()
-        {
-            return Health > 0;
-        }
+        public bool IsAlive() => Health > 0;
 
         public virtual void TakeDamage(int damage)
         {
-            int actual = damage - Defense / 3;
+            if (damage < 0) damage = 0;
+
+            int actual = damage - Defense / CombatBalance.DefenseDivisor;
             if (actual < 1) actual = 1;
 
             Health -= actual;
             if (Health < 0) Health = 0;
 
-            Console.WriteLine($"  {Name} takes {actual} damage ({Health}/{MaxHealth} HP)");
+            CombatLog.Write($"  {Name} takes {actual} damage ({Health}/{MaxHealth} HP)");
         }
 
         public void Heal(int amount)
         {
+            if (amount < 0) amount = 0;
+
             Health += amount;
             if (Health > MaxHealth) Health = MaxHealth;
-            Console.WriteLine($"  {Name} heals {amount} ({Health}/{MaxHealth})");
+            CombatLog.Write($"  {Name} heals {amount} ({Health}/{MaxHealth})");
         }
 
-        // Take a turn — cycle through skills, else basic attack.
-        // We now respect Skill.Target so self-targeting skills (like a
-        // healer's self-heal) actually hit the caster, not the enemy.
+        // Cycle through skills each turn; fall back to a basic attack
+        // if none are available. Self-targeting skills hit the caster.
         public virtual void TakeTurn(ICombatant target)
         {
-            if (!IsAlive()) return;
+            if (!IsAlive() || target == null) return;
 
             if (Skills.Count > 0)
             {
@@ -78,48 +86,16 @@ namespace RpgLibrary.Combat
             }
         }
 
-        // Plain swing — satisfies ICombatant.BasicAttack so BattleSystem
-        // can treat every combatant the same way.
         public void BasicAttack(ICombatant target)
         {
-            Console.WriteLine($"{Name} swings for {Attack} damage!");
+            if (target == null) return;
+            CombatLog.Write($"{Name} swings for {Attack} damage!");
             target.TakeDamage(Attack);
         }
 
-        // Public entry so factories/bosses can add skills after construction.
         public void AddSkill(Skill skill)
         {
             if (skill != null) Skills.Add(skill);
-        }
-    }
-    // WeakEnemy, low HP, low attack. can name freely
-    public class WeakEnemy : Enemy
-    {
-        public WeakEnemy(string name = "Weak Enemy"): base(name, 40, 8, 2, speed: 12)   // fast but fragile
-        {
-            Skills.Add(new AttackSkill("Basic Attack", 10));
-        }
-    }
-
-
-    // StrongEnemy, high HP, high attack
-
-    public class StrongEnemy : Enemy
-    {
-        public StrongEnemy(string name = "Strong Enemy")
-            : base(name, 90, 14, 8, speed: 6)   // slow tank
-        {
-            Skills.Add(new AttackSkill("Heavy Attack", 20));
-        }
-    }
-    // HealerEnemy, attacks and can heal itself. can rename freely.
-
-    public class HealerEnemy : Enemy
-    {
-        public HealerEnemy(string name = "Healer Enemy"):base(name, 55, 11, 5, speed: 9)
-        {
-            Skills.Add(new AttackSkill("Basic Attack", 12));
-            Skills.Add(new HealSkill("Self Heal", 15));
         }
     }
 }

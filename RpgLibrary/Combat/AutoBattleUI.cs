@@ -5,10 +5,8 @@ namespace RpgLibrary.Combat
 {
     // Non-interactive UI: never asks the user, picks options itself.
     // Handy for demos, CI, or an "auto-battle" mode inside a real game.
-    //
     // Inherits from ConsoleBattleUI so we still get the pretty banners,
-    // HP bars, and round messages. We only override the "choose"
-    // methods so they auto-pick instead of reading Console.ReadLine.
+    // HP bars, and round messages. We only override the "choose" methods.
     public class AutoBattleUI : ConsoleBattleUI
     {
         public override BattleActionOption? ChooseAction(PartyMember member, IReadOnlyList<BattleActionOption> options)
@@ -25,7 +23,7 @@ namespace RpgLibrary.Combat
 
         public override ICombatant? ChooseTarget(List<ICombatant> candidates, string prompt)
         {
-            // Pick the target with the lowest HP — focus-fire.
+            // Pick the target with the lowest HP - focus-fire.
             ICombatant? weakest = null;
             foreach (ICombatant c in candidates)
             {
