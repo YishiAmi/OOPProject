@@ -4,12 +4,7 @@ using RpgLibrary.Combat;
 namespace RpgLibrary.Contracts
 {
     // BattleSystem talks to the outside world through this interface.
-    //   - Console apps -> ConsoleBattleUI (menus via Console.ReadLine)
-    //   - Auto-play    -> AutoBattleUI (picks the best option itself)
-    //   - Unity / WPF  -> your own class that implements this interface
-    //
-    // BattleSystem itself has NO console code. That is why swapping
-    // the UI does not need a single change inside BattleSystem.
+
     public interface IBattleUI
     {
         // Once at the start of the battle.
