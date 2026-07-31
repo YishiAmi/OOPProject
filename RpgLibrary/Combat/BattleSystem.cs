@@ -5,21 +5,7 @@ using RpgLibrary.Exceptions;
 
 namespace RpgLibrary.Combat
 {
-    // BattleSystem — turn-based combat orchestrator.
-    //
-    // Knows the RULES of turn-based combat:
-    //   1. Every round, sort combatants by Speed (fastest first).
-    //   2. Each living combatant acts once.
-    //   3. Party actions come from a menu the UI presents.
-    //   4. Enemy actions come from a pluggable AI strategy.
-    //   5. Battle ends when one side has no living members,
-    //      OR when MaxRounds is exceeded (Timeout).
-    //
-    // Knows NOTHING about:
-    //   - How to draw the menu     (that's IBattleUI)
-    //   - How enemies decide       (that's IEnemyStrategy)
-    //   - What targets a skill wants (that's Skill.Target)
-    //   - How much to charge each turn (that's BattleSettings)
+ 
     public class BattleSystem
     {
         private readonly List<PartyMember> _party;
@@ -60,12 +46,10 @@ namespace RpgLibrary.Combat
             _settings = settings;
         }
 
-        // ---------- MAIN LOOP ----------
+       
         public void Run()
         {
-            // Route every domain-class log message through the UI while
-            // this battle is running. Restore the previous sink at the
-            // end so we play nice with other consumers.
+          
             Action<string> previousSink = CombatLog.Sink;
             CombatLog.Sink = _ui.ShowMessage;
 
@@ -113,8 +97,7 @@ namespace RpgLibrary.Combat
                     }
                 }
 
-                // If the loop ended without a timeout, decide the outcome
-                // from who is still standing.
+          
                 if (Outcome == BattleOutcome.Undecided)
                 {
                     if (!EnemiesAlive() && PartyAlive())      Outcome = BattleOutcome.Victory;
@@ -131,7 +114,7 @@ namespace RpgLibrary.Combat
             }
         }
 
-        // ---------- STATE ----------
+     
         private BattleState BuildState()
         {
             return new BattleState(Round, _party, _enemies, BuildTurnOrder());
@@ -191,9 +174,7 @@ namespace RpgLibrary.Combat
             else if (chosen.Kind == BattleActionKind.Ultimate) DoUltimate(member);
         }
 
-        // Build the list of enabled actions for this hero.
-        // Defend and Flee are not offered yet — implement them in
-        // BuildActionMenu when the mechanics exist.
+  
         private List<BattleActionOption> BuildActionMenu(PartyMember member)
         {
             List<BattleActionOption> list = new List<BattleActionOption>();
@@ -228,8 +209,7 @@ namespace RpgLibrary.Combat
 
         private void DoSkill(PartyMember member)
         {
-            // The UI's ChooseSkill takes a concrete List<Skill>, so
-            // copy the read-only view into one before passing it in.
+          
             List<Skill> skills = new List<Skill>(member.Skills);
             Skill? skill = _ui.ChooseSkill(skills);
             if (skill != null) ApplySkill(member, skill);
@@ -249,8 +229,7 @@ namespace RpgLibrary.Combat
             }
         }
 
-        // Apply a skill by asking it who it targets.
-        // No `is HealSkill` type checks anywhere.
+
         private void ApplySkill(PartyMember member, Skill skill)
         {
             ICombatant caster = member.Combatant;
@@ -298,7 +277,6 @@ namespace RpgLibrary.Combat
             return _ui.ChooseTarget(alive, "Choose ally");
         }
 
-        // ---------- ENEMY TURN ----------
         private void EnemyTurn(ICombatant actor)
         {
             List<ICombatant> aliveAllies = new List<ICombatant>();
