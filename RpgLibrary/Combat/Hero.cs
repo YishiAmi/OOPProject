@@ -80,18 +80,18 @@ namespace RpgLibrary.Combat
         }
 
         // ---- equipment ----
-        public void EquipWeapon(Weapon weapon)
+       public void EquipWeapon(Weapon weapon)
         {
-            if (EquippedWeapon != null) Attack -= EquippedWeapon.Damage;
+            if (EquippedWeapon != null) Attack -= EquippedWeapon.AttackBonus;
             EquippedWeapon = weapon;
-            Attack += weapon.Damage;
+            Attack += weapon.AttackBonus;
         }
 
         public void EquipArmor(Armor armor)
         {
-            if (EquippedArmor != null) Defense -= EquippedArmor.Defense;
+            if (EquippedArmor != null) Defense -= EquippedArmor.DefenseBonus;
             EquippedArmor = armor;
-            Defense += armor.Defense;
+            Defense += armor.DefenseBonus;
         }
 
         // ---- progression ----
