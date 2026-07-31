@@ -1,0 +1,64 @@
+@startuml
+!include theme.puml
+
+title RpgLibrary — current dependency architecture
+left to right direction
+
+package "RpgDemo\n«Windows Forms»" as Demo EXTERNAL {
+  [LauncherForm]
+  [MainForm]
+  [BattleForm]
+  [WinFormBattleUI]
+}
+
+package "RpgLibrary" {
+  package "World" as World {
+    [GameManager] <<Facade>>
+    [Map / NPC / Quest / Shop] as WorldDomain
+  }
+
+  package "Combat" as Combat {
+    [BattleSystem]
+    [Hero / Enemy / Skill] as CombatDomain
+  }
+
+  package "Items" as Items {
+    [Item / Inventory / Equipment] as ItemDomain
+  }
+
+  package "Contracts" as Contracts CONTRACT {
+    [ICombatant]
+    [IShopItem]
+    [IEquippable]
+    [IBattleUI]
+    [IEnemyStrategy]
+  }
+
+  package "Exceptions" as Exceptions {
+    [Domain exceptions]
+  }
+}
+
+Demo ..> [GameManager] : world actions
+Demo ..> [BattleSystem] : starts battles
+Demo ..> ItemDomain : creates demo items
+WinFormBattleUI ..> [IBattleUI] : implements
+
+[GameManager] --> WorldDomain : coordinates
+[GameManager] ..> [ICombatant] : player
+[GameManager] ..> [IShopItem] : purchases
+
+[BattleSystem] ..> [IBattleUI] : presentation
+[BattleSystem] ..> [IEnemyStrategy] : enemy decisions
+CombatDomain ..> [ICombatant] : implements / consumes
+CombatDomain ..> ItemDomain : Hero owns concrete\nitem types
+CombatDomain ..> [Domain exceptions] : ultimate failures
+
+ItemDomain ..> [IShopItem] : Item implements
+ItemDomain ..> [IEquippable] : Armor implements
+
+note bottom of CombatDomain
+  The Combat → Items dependency shown here exists
+  in the current Hero implementation.
+end note
+@enduml

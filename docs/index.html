@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="API reference and architecture guide for the RpgLibrary .NET class library.">
+  <meta name="theme-color" content="#263f85">
+  <title>RpgLibrary API Reference</title>
+  <link rel="icon" type="image/jpeg" href="assets/coconut.jpg">
+  <link rel="preload" href="assets/fonts/NewRocker-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to documentation</a>
+
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="RpgLibrary documentation home">
+      <img src="assets/coconut.jpg" width="38" height="38" alt="">
+      <span>
+        <strong>RpgLibrary</strong>
+        <small>API Reference</small>
+      </span>
+    </a>
+
+    <button class="icon-button mobile-nav-toggle" type="button"
+            aria-label="Open documentation navigation" aria-expanded="false"
+            aria-controls="primary-navigation">
+      <span aria-hidden="true">☰</span>
+    </button>
+
+    <div class="topbar-meta">
+      <span class="version-badge">.NET 10</span>
+      <a href="../README.md">Repository guide</a>
+      <button class="icon-button theme-toggle" type="button"
+              aria-label="Switch to dark theme">
+        <span class="theme-icon" aria-hidden="true">☾</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="page-grid">
+    <aside class="sidebar" id="primary-navigation" aria-label="Documentation navigation">
+      <div class="search-wrap">
+        <label for="doc-search">Search API</label>
+      <div class="search-field">
+          <span aria-hidden="true">⌕</span>
+          <input id="doc-search" type="search" autocomplete="off"
+                 placeholder="Type or member…" aria-describedby="search-status">
+          <kbd>/</kbd>
+        </div>
+        <p id="search-status" class="search-status" aria-live="polite">All reference entries shown</p>
+      </div>
+
+      <nav class="side-nav">
+        <p class="nav-label">Start</p>
+        <a href="#overview">Overview</a>
+        <a href="#installation">Build &amp; consume</a>
+        <a href="#architecture">Architecture</a>
+        <p class="nav-label">API namespaces</p>
+        <a href="#contracts">Contracts <span>5</span></a>
+        <a href="#world">World <span>16</span></a>
+        <a href="#combat">Combat <span>28</span></a>
+        <a href="#items">Items <span>7</span></a>
+        <a href="#exceptions">Exceptions <span>3</span></a>
+        <p class="nav-label">Guides</p>
+        <a href="#winforms">WinForms integration</a>
+        <a href="#uml-index">UML index</a>
+      </nav>
+
+      <div class="sidebar-card">
+        <img src="assets/coconut.jpg" width="52" height="52" alt="Whole coconut, the RpgLibrary project mark">
+        <div>
+          <strong>UI-agnostic core</strong>
+          <p>Build game rules once. Render them anywhere.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main id="content" tabindex="-1">
+      <section class="hero doc-section" id="overview" data-search-item>
+        <div class="hero-copy">
+          <p class="eyebrow">JRPG CLASS LIBRARY · API REFERENCE</p>
+          <h1>Game systems,<br><em>without the screen.</em></h1>
+          <p class="hero-lede">
+            RpgLibrary is a reusable .NET class library for turn-based combat,
+            world exploration, quests, shops, items, and player state. Its public
+            APIs return data and outcomes that a WinForms—or any other—front end
+            can render.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#installation">Get started</a>
+            <a class="button secondary" href="#world">Browse World API</a>
+          </div>
+        </div>
+        <aside class="hero-panel" aria-label="Library summary">
+          <div class="hero-mark">
+            <img src="assets/coconut.jpg" width="132" height="132" alt="Whole coconut project logo">
+          </div>
+          <dl class="quick-facts">
+            <div><dt>Runtime</dt><dd>.NET 10</dd></div>
+            <div><dt>Artifact</dt><dd>RpgLibrary.dll</dd></div>
+            <div><dt>UI</dt><dd>Framework-neutral</dd></div>
+            <div><dt>Facade</dt><dd>GameManager</dd></div>
+          </dl>
+        </aside>
+      </section>
+
+      <section class="doc-section" id="installation" data-search-item>
+        <div class="section-heading">
+          <p class="eyebrow">QUICK START</p>
+          <h2>Build and consume the DLL</h2>
+          <p>The solution builds the library first, then the Windows Forms demo resolves the resulting binary.</p>
+        </div>
+
+        <div class="callout note">
+          <span class="callout-icon" aria-hidden="true">i</span>
+          <div>
+            <strong>What “API” means here</strong>
+            <p>The API is the library’s public C# types and members. No HTTP server is required.</p>
+          </div>
+        </div>
+
+        <div class="step-grid">
+          <article class="step">
+            <span>01</span>
+            <h3>Build</h3>
+            <p>Compile both projects in Release configuration.</p>
+            <pre><code>dotnet build OOPProject.sln \
+  --configuration Release</code></pre>
+          </article>
+          <article class="step">
+            <span>02</span>
+            <h3>Locate</h3>
+            <p>The distributable class-library output appears here:</p>
+            <pre><code>RpgLibrary/bin/Release/net10.0/
+└── RpgLibrary.dll</code></pre>
+          </article>
+          <article class="step">
+            <span>03</span>
+            <h3>Reference</h3>
+            <p>The demo uses the compiled artifact through an MSBuild reference.</p>
+            <pre><code>&lt;Reference Include="RpgLibrary"&gt;
+  &lt;HintPath&gt;..\RpgLibrary\bin\
+$(Configuration)\net10.0\
+RpgLibrary.dll&lt;/HintPath&gt;
+&lt;/Reference&gt;</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="doc-section" id="architecture" data-search-item>
+        <div class="section-heading">
+          <p class="eyebrow">SYSTEM DESIGN</p>
+          <h2>One facade, four focused namespaces</h2>
+          <p>
+            WinForms coordinates player-level operations through
+            <code>GameManager</code>. Subsystems exchange only shared contract
+            types, keeping the DLL portable and preventing circular dependencies.
+          </p>
+        </div>
+
+        <figure class="diagram" data-diagram>
+          <div class="diagram-toolbar">
+            <figcaption>Facade and dependency architecture</figcaption>
+            <div class="diagram-legend" aria-hidden="true">
+              <span><i class="legend-line"></i> dependency</span>
+              <span><i class="legend-diamond">◆</i> ownership</span>
+            </div>
+            <div class="diagram-actions">
+              <a href="uml/architecture.svg">Open SVG</a>
+              <button type="button" class="expand-diagram">Expand <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <div class="diagram-preview">
+            <img class="plantuml-diagram" src="uml/architecture-overview.svg" alt="PlantUML package dependency diagram of RpgDemo and the RpgLibrary subsystems.">
+          </div>
+        </figure>
+
+        <div class="principle-grid">
+          <article><span>F</span><h3>Facade</h3><p>Forms request top-level game actions from one coordinator instead of mutating several subsystems.</p></article>
+          <article><span>C</span><h3>Contracts</h3><p><code>ICombatant</code> and <code>IShopItem</code> carry shared behavior across namespace boundaries.</p></article>
+          <article><span>R</span><h3>Result APIs</h3><p>World operations return status-rich records that the UI can translate into labels, dialogs, or animations.</p></article>
+        </div>
+      </section>
+
+      <section class="doc-section api-namespace" id="contracts">
+        <div class="namespace-heading">
+          <div>
+            <p class="eyebrow">NAMESPACE 01</p>
+            <h2>RpgLibrary.Contracts</h2>
+          </div>
+          <span class="type-count">5 interfaces</span>
+        </div>
+        <p class="namespace-intro">
+          Stable, shared capabilities used at subsystem boundaries. Consumers
+          can provide their own combatants, shop items, battle UI, and enemy AI.
+        </p>
+
+        <figure class="diagram class-diagram" data-diagram>
+          <div class="diagram-toolbar">
+            <figcaption>Contracts class diagram <span>Standard UML</span></figcaption>
+            <div class="diagram-legend" aria-hidden="true">
+              <span><i class="legend-line dashed"></i> realization</span>
+              <span><i class="legend-triangle">△</i> interface</span>
+            </div>
+            <div class="diagram-actions">
+              <a href="uml/contracts.svg">Open SVG</a>
+              <button type="button" class="expand-diagram">Explore <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <div class="diagram-preview">
+            <img class="plantuml-diagram" src="uml/contracts.svg" alt="Standard UML class diagram showing all shared interfaces, their public members, and their implementations.">
+          </div>
+        </figure>
+
+        <div class="api-list">
+          <article class="api-card" id="type-icombatant" data-search-item data-search="ICombatant health speed basic attack damage heal combat">
+            <div class="api-card-head">
+              <div><span class="kind interface">interface</span><h3>ICombatant</h3></div>
+              <a class="anchor" href="#type-icombatant" aria-label="Link to ICombatant">#</a>
+            </div>
+            <p>The minimum state and behavior required to participate in combat or occupy a map.</p>
+            <pre><code>public interface ICombatant
+{
+    string Name { get; }
+    int Health { get; }
+    int MaxHealth { get; }
+    int Defense { get; }
+    int Speed { get; }
+
+    bool IsAlive();
+    void TakeDamage(int damage);
+    void Heal(int amount);
+    void BasicAttack(ICombatant target);
+}</code></pre>
+          </article>
+
+          <article class="api-card" id="type-ishopitem" data-search-item data-search="IShopItem name price shop item">
+            <div class="api-card-head">
+              <div><span class="kind interface">interface</span><h3>IShopItem</h3></div>
+              <a class="anchor" href="#type-ishopitem" aria-label="Link to IShopItem">#</a>
+            </div>
+            <p>The pricing boundary used by World shops without depending on concrete Item classes.</p>
+            <pre><code>public interface IShopItem
+{
+    string Name { get; }
+    int Price { get; }
+}</code></pre>
+          </article>
+
+          <article class="api-card" id="type-iequippable" data-search-item data-search="IEquippable equip unequip armor equipment">
+            <div class="api-card-head">
+              <div><span class="kind interface">interface</span><h3>IEquippable</h3></div>
+              <a class="anchor" href="#type-iequippable" aria-label="Link to IEquippable">#</a>
+            </div>
+            <p>The shared equipment lifecycle implemented by equippable item types such as <code>Armor</code>.</p>
+            <pre><code>public interface IEquippable
+{
+    void Equip();
+    void Unequip();
+}</code></pre>
+          </article>
+
+          <article class="api-card" id="type-ibattleui" data-search-item data-search="IBattleUI show choose action target skill battle presentation">
+            <div class="api-card-head">
+              <div><span class="kind interface">interface</span><h3>IBattleUI</h3></div>
+              <a class="anchor" href="#type-ibattleui" aria-label="Link to IBattleUI">#</a>
+            </div>
+            <p>All presentation and player-choice callbacks used by <code>BattleSystem</code>.</p>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Member</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>ShowIntro(BattleState)</code></td><td>Present initial party and enemy state.</td></tr>
+                <tr><td><code>ShowRoundStart(BattleState)</code></td><td>Present a new round.</td></tr>
+                <tr><td><code>ShowActorTurn(ICombatant, bool)</code></td><td>Identify the active combatant.</td></tr>
+                <tr><td><code>ShowMessage(string)</code></td><td>Receive battle-domain log output.</td></tr>
+                <tr><td><code>ChooseAction(PartyMember, IReadOnlyList&lt;BattleActionOption&gt;)</code></td><td>Return an action or <code>null</code>.</td></tr>
+                <tr><td><code>ChooseTarget(List&lt;ICombatant&gt;, string)</code></td><td>Select a valid target.</td></tr>
+                <tr><td><code>ChooseSkill(List&lt;Skill&gt;)</code></td><td>Select an available skill.</td></tr>
+                <tr><td><code>ShowBattleEnd(BattleOutcome, int)</code></td><td>Present the final result and round count.</td></tr>
+              </tbody>
+            </table></div>
+          </article>
+
+          <article class="api-card" id="type-ienemystrategy" data-search-item data-search="IEnemyStrategy AI target random lowest hp">
+            <div class="api-card-head">
+              <div><span class="kind interface">interface</span><h3>IEnemyStrategy</h3></div>
+              <a class="anchor" href="#type-ienemystrategy" aria-label="Link to IEnemyStrategy">#</a>
+            </div>
+            <p>A replaceable enemy decision policy. Built-in implementations select random or lowest-health targets.</p>
+            <pre><code>void TakeTurn(
+    ICombatant actor,
+    List&lt;ICombatant&gt; livingAllies,
+    List&lt;ICombatant&gt; livingEnemies);</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="doc-section api-namespace" id="world">
+        <div class="namespace-heading">
+          <div><p class="eyebrow">NAMESPACE 02</p><h2>RpgLibrary.World</h2></div>
+          <span class="type-count">16 types</span>
+        </div>
+        <p class="namespace-intro">
+          Maps, NPCs, quest state, shops, results, and the application-facing
+          <code>GameManager</code> facade.
+        </p>
+
+        <figure class="diagram class-diagram" data-diagram>
+          <div class="diagram-toolbar">
+            <figcaption>World class diagram <span>Standard UML</span></figcaption>
+            <div class="diagram-legend" aria-hidden="true">
+              <span><i class="legend-diamond">◆</i> composition</span>
+              <span><i class="legend-triangle">△</i> inheritance</span>
+            </div>
+            <div class="diagram-actions">
+              <a href="uml/world.svg">Open SVG</a>
+              <button type="button" class="expand-diagram">Explore <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <div class="diagram-preview">
+            <img class="plantuml-diagram" src="uml/world.svg" alt="Standard UML class diagram showing the GameManager facade, maps, NPCs, quests, shops, results, and their relationships.">
+          </div>
+        </figure>
+
+        <div class="api-list">
+          <article class="api-card featured" id="type-gamemanager" data-search-item data-search="GameManager facade player gold map quest shop buy award change talk">
+            <div class="api-card-head">
+              <div><span class="kind class">sealed class</span><h3>GameManager</h3></div>
+              <a class="anchor" href="#type-gamemanager" aria-label="Link to GameManager">#</a>
+            </div>
+            <p>The application facade. It owns current location, wallet state, and the active/completed quest collections.</p>
+            <pre><code>new GameManager(
+    ICombatant player,
+    Map startingMap,
+    int startingGold = 0)</code></pre>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Member</th><th>Returns / behavior</th></tr></thead>
+              <tbody>
+                <tr><td><code>Player</code></td><td>The player contract supplied at construction.</td></tr>
+                <tr><td><code>CurrentMap</code></td><td>Current location; changed only through the facade.</td></tr>
+                <tr><td><code>PlayerGold</code></td><td>Authoritative World-layer wallet balance.</td></tr>
+                <tr><td><code>ActiveQuests</code> / <code>CompletedQuests</code></td><td>Read-only quest views.</td></tr>
+                <tr><td><code>ChangeMap(Map)</code></td><td>Sets and returns the new map.</td></tr>
+                <tr><td><code>TalkToNpc(NPC)</code></td><td><code>NpcInteractionResult</code></td></tr>
+                <tr><td><code>AcceptQuest(NPC)</code></td><td><code>QuestActionResult</code></td></tr>
+                <tr><td><code>AddQuestProgress(Quest, int)</code></td><td>Validates active state and clamps progress.</td></tr>
+                <tr><td><code>CompleteQuest(Quest)</code></td><td>Moves the quest and awards its gold once.</td></tr>
+                <tr><td><code>GetCurrentShop()</code></td><td>The map shop, or <code>null</code>.</td></tr>
+                <tr><td><code>BuyItem(ShopSlot)</code></td><td><code>PurchaseResult</code>; deducts gold on success.</td></tr>
+                <tr><td><code>AwardGold(int)</code></td><td>Returns the updated balance.</td></tr>
+              </tbody>
+            </table></div>
+          </article>
+
+          <article class="api-card" id="type-quest" data-search-item data-search="Quest MainQuest SideQuest status progress reward chapter region">
+            <div class="api-card-head">
+              <div><span class="kind abstract">abstract class</span><h3>Quest</h3></div>
+              <a class="anchor" href="#type-quest" aria-label="Link to Quest">#</a>
+            </div>
+            <p>Base quest state machine. Lifecycle mutation is coordinated internally by <code>GameManager</code>.</p>
+            <pre><code>protected Quest(
+    string title,
+    string objective,
+    int goldReward,
+    int requiredProgress = 1)</code></pre>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Property</th><th>Type / meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>Title</code>, <code>Objective</code></td><td>Immutable display text.</td></tr>
+                <tr><td><code>GoldReward</code></td><td>Non-negative completion reward.</td></tr>
+                <tr><td><code>RequiredProgress</code>, <code>CurrentProgress</code></td><td>Required and clamped progress values.</td></tr>
+                <tr><td><code>Status</code></td><td><code>Available</code>, <code>Active</code>, or <code>Completed</code>.</td></tr>
+                <tr><td><code>Type</code></td><td>Abstract <code>QuestType</code> discriminator.</td></tr>
+                <tr><td><code>Completed</code>, <code>CanComplete</code></td><td>Calculated state helpers.</td></tr>
+              </tbody>
+            </table></div>
+            <div class="variant-row">
+              <div><code>MainQuest(..., int chapter, int requiredProgress = 1)</code><span>Adds <code>Chapter</code>.</span></div>
+              <div><code>SideQuest(..., string region, int requiredProgress = 1)</code><span>Adds <code>Region</code>.</span></div>
+            </div>
+          </article>
+
+          <article class="api-card" id="type-map" data-search-item data-search="Map NPC enemy shop location difficulty add remove contains">
+            <div class="api-card-head">
+              <div><span class="kind class">sealed class</span><h3>Map</h3></div>
+              <a class="anchor" href="#type-map" aria-label="Link to Map">#</a>
+            </div>
+            <p>A validated location containing read-only NPC and enemy views plus an optional shop.</p>
+            <pre><code>new Map(string mapName, int difficulty)</code></pre>
+            <p class="signature-list"><code>AddNpc</code> · <code>RemoveNpc</code> · <code>ContainsNpc</code> · <code>AddEnemy</code> · <code>RemoveEnemy</code> · <code>ContainsEnemy</code> · <code>SetLocalShop</code></p>
+          </article>
+
+          <article class="api-card" id="type-npc" data-search-item data-search="NPC dialogue talk offered quest assign remove">
+            <div class="api-card-head">
+              <div><span class="kind class">sealed class</span><h3>NPC</h3></div>
+              <a class="anchor" href="#type-npc" aria-label="Link to NPC">#</a>
+            </div>
+            <pre><code>new NPC(
+    string name,
+    string dialogue,
+    Quest? offeredQuest = null)</code></pre>
+            <p><code>Talk()</code> returns dialogue. <code>AssignQuest(Quest)</code> and <code>RemoveQuest()</code> control the optional offer.</p>
+          </article>
+
+          <article class="api-card" id="type-shop" data-search-item data-search="Shop ShopSlot stock inventory price quantity purchase">
+            <div class="api-card-head">
+              <div><span class="kind class">sealed classes</span><h3>Shop &amp; ShopSlot</h3></div>
+              <a class="anchor" href="#type-shop" aria-label="Link to Shop and ShopSlot">#</a>
+            </div>
+            <div class="split-reference">
+              <div>
+                <h4>Shop</h4>
+                <code>new Shop(string shopName)</code>
+                <p>Exposes read-only <code>Inventory</code>. Use <code>AddStock(IShopItem, int)</code> and <code>RemoveStock(IShopItem, int)</code>.</p>
+              </div>
+              <div>
+                <h4>ShopSlot</h4>
+                <code>new ShopSlot(IShopItem item, int quantity)</code>
+                <p>Exposes <code>Item</code>, controlled <code>Quantity</code>, and calculated <code>IsInStock</code>.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="api-card" id="type-world-results" data-search-item data-search="result status enum PurchaseResult QuestActionResult NpcInteractionResult succeeded">
+            <div class="api-card-head">
+              <div><span class="kind record">records + enums</span><h3>Operation results</h3></div>
+              <a class="anchor" href="#type-world-results" aria-label="Link to World result types">#</a>
+            </div>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Type</th><th>Shape</th></tr></thead>
+              <tbody>
+                <tr><td><code>NpcInteractionResult</code></td><td>Status, NPC, dialogue, offered quest, acceptability, <code>Succeeded</code>.</td></tr>
+                <tr><td><code>QuestActionResult</code></td><td>Status, quest, gold awarded, gold remaining, <code>Succeeded</code>.</td></tr>
+                <tr><td><code>PurchaseResult</code></td><td>Status, item, price paid, gold remaining, <code>Succeeded</code>.</td></tr>
+              </tbody>
+            </table></div>
+            <details>
+              <summary>Status values</summary>
+              <p><strong>NpcInteractionStatus:</strong> Success, NpcNotInCurrentMap.</p>
+              <p><strong>QuestActionStatus:</strong> Success, NpcNotInCurrentMap, NoQuestOffered, AlreadyAccepted, QuestNotActive, InvalidProgress, RequirementsNotMet, AlreadyCompleted.</p>
+              <p><strong>PurchaseStatus:</strong> Success, ItemNotSold, OutOfStock, InsufficientGold, ShopUnavailable.</p>
+              <p><strong>QuestStatus:</strong> Available, Active, Completed. <strong>QuestType:</strong> Main, Side.</p>
+            </details>
+          </article>
+        </div>
+      </section>
+
+      <section class="doc-section api-namespace" id="combat">
+        <div class="namespace-heading">
+          <div><p class="eyebrow">NAMESPACE 03</p><h2>RpgLibrary.Combat</h2></div>
+          <span class="type-count">28 types</span>
+        </div>
+        <p class="namespace-intro">
+          Turn ordering, battle orchestration, combatant implementations,
+          skills, ultimates, strategies, settings, state snapshots, and UI adapters.
+        </p>
+
+        <figure class="diagram class-diagram" data-diagram>
+          <div class="diagram-toolbar">
+            <figcaption>Combat class diagram <span>Standard UML</span></figcaption>
+            <div class="diagram-legend" aria-hidden="true">
+              <span><i class="legend-diamond">◆</i> composition</span>
+              <span><i class="legend-triangle">△</i> realization</span>
+            </div>
+            <div class="diagram-actions">
+              <a href="uml/combat.svg">Open SVG</a>
+              <button type="button" class="expand-diagram">Explore <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <div class="diagram-preview">
+            <img class="plantuml-diagram" src="uml/combat.svg" alt="Standard UML class diagram showing battle orchestration, combatants, skills, strategies, adapters, and dependency relationships.">
+          </div>
+        </figure>
+
+        <div class="api-list">
+          <article class="api-card featured" id="type-battlesystem" data-search-item data-search="BattleSystem run round outcome event party enemy UI strategy settings">
+            <div class="api-card-head">
+              <div><span class="kind class">class</span><h3>BattleSystem</h3></div>
+              <a class="anchor" href="#type-battlesystem" aria-label="Link to BattleSystem">#</a>
+            </div>
+            <p>Runs the synchronous turn-based battle loop while delegating all presentation and decisions.</p>
+            <pre><code>new BattleSystem(
+    List&lt;PartyMember&gt; party,
+    List&lt;ICombatant&gt; enemies,
+    IBattleUI ui,
+    IEnemyStrategy enemyStrategy,
+    BattleSettings settings)</code></pre>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Member</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>Run()</code></td><td>Executes rounds until victory, defeat, or configured timeout.</td></tr>
+                <tr><td><code>Round</code>, <code>Outcome</code></td><td>Current counter and final/current result.</td></tr>
+                <tr><td><code>PartyWon</code>, <code>BattleOver</code></td><td>Calculated outcome helpers.</td></tr>
+                <tr><td><code>RoundStarted</code></td><td><code>Action&lt;BattleState&gt;</code> event.</td></tr>
+                <tr><td><code>TurnStarted</code></td><td><code>Action&lt;ICombatant&gt;</code> event.</td></tr>
+                <tr><td><code>BattleEnded</code></td><td><code>Action&lt;BattleOutcome, int&gt;</code> event.</td></tr>
+              </tbody>
+            </table></div>
+          </article>
+
+          <article class="api-card" id="type-combatants" data-search-item data-search="Hero Enemy Boss WeakEnemy StrongEnemy HealerEnemy health attack defense speed">
+            <div class="api-card-head">
+              <div><span class="kind class">combatants</span><h3>Hero &amp; Enemy hierarchy</h3></div>
+              <a class="anchor" href="#type-combatants" aria-label="Link to combatant types">#</a>
+            </div>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Type</th><th>Public API</th></tr></thead>
+              <tbody>
+                <tr><td><code>Hero : ICombatant</code></td><td>Stats, equipment, inventory, progression, gold; <code>TakeDamage</code>, <code>Heal</code>, <code>BasicAttack</code>, equip and level methods.</td></tr>
+                <tr><td><code>Enemy : ICombatant</code></td><td>Abstract validated stats; <code>TakeTurn</code>, <code>AddSkill</code>, and combat behavior.</td></tr>
+                <tr><td><code>WeakEnemy</code></td><td>Fast, low-health enemy with a basic attack skill.</td></tr>
+                <tr><td><code>StrongEnemy</code></td><td>Slower, durable enemy with a heavy attack.</td></tr>
+                <tr><td><code>HealerEnemy</code></td><td>Enemy configured with self-healing behavior.</td></tr>
+                <tr><td><code>Boss</code></td><td>Enemy with an <code>UltimateSkill</code>, charge-on-damage, and configurable enrage phase.</td></tr>
+              </tbody>
+            </table></div>
+            <details>
+              <summary>Constructors</summary>
+              <pre><code>new Hero()
+new Hero(string name, int maxHealth, int attack,
+         int defense, int speed = 10)
+
+new Boss(string name, int maxHealth, int attack,
+         int defense, UltimateSkill ultimate,
+         int speed = 7,
+         int enrageThresholdPercent = 30,
+         int enrageAttackBonus = 8)</code></pre>
+            </details>
+          </article>
+
+          <article class="api-card" id="type-party-member" data-search-item data-search="PartyMember combatant skills ultimate loadout">
+            <div class="api-card-head">
+              <div><span class="kind class">class</span><h3>PartyMember</h3></div>
+              <a class="anchor" href="#type-party-member" aria-label="Link to PartyMember">#</a>
+            </div>
+            <p>Wraps a player-side <code>ICombatant</code> with its read-only skill loadout and optional ultimate.</p>
+            <pre><code>new PartyMember(
+    ICombatant combatant,
+    IEnumerable&lt;Skill&gt;? skills = null,
+    UltimateSkill? ultimate = null)</code></pre>
+          </article>
+
+          <article class="api-card" id="type-skills" data-search-item data-search="Skill AttackSkill HealSkill UltimateSkill DamageUltimate DrainUltimate HealUltimate power charge target">
+            <div class="api-card-head">
+              <div><span class="kind abstract">skill hierarchy</span><h3>Skills &amp; ultimates</h3></div>
+              <a class="anchor" href="#type-skills" aria-label="Link to skills and ultimates">#</a>
+            </div>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Type</th><th>Role</th></tr></thead>
+              <tbody>
+                <tr><td><code>Skill</code></td><td>Abstract <code>Name</code>, <code>Power</code>, <code>Target</code>, and <code>Use(source, target)</code>.</td></tr>
+                <tr><td><code>AttackSkill</code></td><td>Single-enemy damage skill.</td></tr>
+                <tr><td><code>HealSkill</code></td><td>Configurable self, ally, or group healing skill.</td></tr>
+                <tr><td><code>UltimateSkill</code></td><td>Charged skill with <code>Charge</code>, <code>ResetCharge</code>, <code>IsCharged</code>, and multiplier state.</td></tr>
+                <tr><td><code>DamageUltimate</code></td><td>Single-target ultimate with base damage.</td></tr>
+                <tr><td><code>DrainUltimate</code></td><td>Damages and heals by <code>DrainRatio</code>.</td></tr>
+                <tr><td><code>HealUltimate</code></td><td>Self-heal by <code>HealRatio</code>.</td></tr>
+              </tbody>
+            </table></div>
+          </article>
+
+          <article class="api-card" id="type-battle-support" data-search-item data-search="BattleSettings BattleState BattleActionOption BattleActionKind BattleOutcome TargetType CombatBalance CombatLog">
+            <div class="api-card-head">
+              <div><span class="kind class">state + configuration</span><h3>Battle support types</h3></div>
+              <a class="anchor" href="#type-battle-support" aria-label="Link to battle support types">#</a>
+            </div>
+            <div class="member-table-wrap"><table class="member-table">
+              <thead><tr><th>Type</th><th>Members</th></tr></thead>
+              <tbody>
+                <tr><td><code>BattleSettings</code></td><td><code>UltimateChargePerTurn</code>, <code>MaxRounds</code>, <code>RemoveKOFromTurnOrder</code>.</td></tr>
+                <tr><td><code>BattleState</code></td><td>Immutable round, party, enemies, and turn order snapshot.</td></tr>
+                <tr><td><code>BattleActionOption</code></td><td>Kind, label, enabled state, and optional detail.</td></tr>
+                <tr><td><code>CombatBalance</code></td><td>Static <code>DefenseDivisor</code>.</td></tr>
+                <tr><td><code>CombatLog</code></td><td>Replaceable <code>Action&lt;string&gt; Sink</code> and <code>Write</code>.</td></tr>
+                <tr><td><code>BattleActionKind</code></td><td>Attack, Skill, Ultimate, Defend, Flee.</td></tr>
+                <tr><td><code>BattleOutcome</code></td><td>Undecided, Victory, Defeat, Timeout.</td></tr>
+                <tr><td><code>TargetType</code></td><td>Self, SingleAlly, SingleEnemy, AllAllies, AllEnemies.</td></tr>
+              </tbody>
+            </table></div>
+          </article>
+
+          <article class="api-card" id="type-combat-adapters" data-search-item data-search="ConsoleBattleUI AutoBattleUI RandomTargetStrategy LowestHpTargetStrategy EnemyFactory">
+            <div class="api-card-head">
+              <div><span class="kind class">adapters + factories</span><h3>Built-in implementations</h3></div>
+              <a class="anchor" href="#type-combat-adapters" aria-label="Link to built-in combat implementations">#</a>
+            </div>
+            <div class="variant-row">
+              <div><code>ConsoleBattleUI : IBattleUI</code><span>Interactive terminal adapter; methods are virtual.</span></div>
+              <div><code>AutoBattleUI : ConsoleBattleUI</code><span>Automatically chooses the first enabled action and valid target.</span></div>
+              <div><code>RandomTargetStrategy</code><span>Optional injected <code>Random</code>; selects a random living target.</span></div>
+              <div><code>LowestHpTargetStrategy</code><span>Targets the living opponent with the lowest health.</span></div>
+              <div><code>EnemyFactory</code><span>Creates weak, strong, healer, damage-boss, and drain-boss presets.</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="doc-section api-namespace" id="items">
+        <div class="namespace-heading">
+          <div><p class="eyebrow">NAMESPACE 04</p><h2>RpgLibrary.Items</h2></div>
+          <span class="type-count">7 classes</span>
+        </div>
+        <p class="namespace-intro">
+          Purchasable items, equipment, inventory capacity, and an item
+          catalogue. Concrete items cross into World only as <code>IShopItem</code>.
+        </p>
+
+        <figure class="diagram class-diagram" data-diagram>
+          <div class="diagram-toolbar">
+            <figcaption>Items class diagram <span>Standard UML</span></figcaption>
+            <div class="diagram-legend" aria-hidden="true">
+              <span><i class="legend-diamond">◆</i> contains</span>
+              <span><i class="legend-triangle">△</i> extends</span>
+            </div>
+            <div class="diagram-actions">
+              <a href="uml/items.svg">Open SVG</a>
+              <button type="button" class="expand-diagram">Explore <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <div class="diagram-preview">
+            <img class="plantuml-diagram" src="uml/items.svg" alt="Standard UML class diagram showing item inheritance, interface realizations, equipment, inventory, and ownership relationships.">
+          </div>
+        </figure>
+
+        <div class="api-list">
+          <article class="api-card" id="type-item" data-search-item data-search="Item IShopItem name description price use display">
+            <div class="api-card-head">
+              <div><span class="kind class">class</span><h3>Item</h3></div>
+              <a class="anchor" href="#type-item" aria-label="Link to Item">#</a>
+            </div>
+            <p>The base purchasable item and the concrete implementation of <code>IShopItem</code>.</p>
+            <pre><code>new Item(string name, string description, int price)</code></pre>
+            <p>Exposes <code>Name</code>, <code>Description</code>, <code>Price</code>, virtual <code>Use()</code>, and <code>DisplayInfo()</code>.</p>
+          </article>
+
+          <article class="api-card" id="type-item-variants" data-search-item data-search="Weapon Armor Potion damage defense heal type drink">
+            <div class="api-card-head">
+              <div><span class="kind class">derived classes</span><h3>Weapon, Armor &amp; Potion</h3></div>
+              <a class="anchor" href="#type-item-variants" aria-label="Link to Item variants">#</a>
+            </div>
+            <div class="variant-row">
+              <div><code>Weapon(..., int damage, string weaponType)</code><span>Adds <code>Damage</code> and <code>WeaponType</code>.</span></div>
+              <div><code>Armor(..., int defenseBonus, string armorType)</code><span>Implements <code>IEquippable</code> and adds <code>DefenseBonus</code> plus <code>ArmorType</code>.</span></div>
+              <div><code>Potion(..., int healAmount)</code><span>Adds <code>HealAmount</code> and <code>Drink()</code>.</span></div>
+            </div>
+          </article>
+
+          <article class="api-card" id="type-inventory" data-search-item data-search="Inventory capacity items add remove count full">
+            <div class="api-card-head">
+              <div><span class="kind class">class</span><h3>Inventory</h3></div>
+              <a class="anchor" href="#type-inventory" aria-label="Link to Inventory">#</a>
+            </div>
+            <pre><code>new Inventory(int capacity)</code></pre>
+            <p>Stores <code>Items</code> up to <code>Capacity</code>. Use <code>AddItem(Item)</code>, <code>RemoveItem(Item)</code>, <code>ShowInventory()</code>, and <code>GetItemCount()</code>.</p>
+          </article>
+
+          <article class="api-card" id="type-equipment" data-search-item data-search="Equipment weapon armor equip show">
+            <div class="api-card-head">
+              <div><span class="kind class">class</span><h3>Equipment</h3></div>
+              <a class="anchor" href="#type-equipment" aria-label="Link to Equipment">#</a>
+            </div>
+            <p>Owns the equipped <code>Weapon</code> and <code>Armor</code>. Provides <code>EquipWeapon</code>, <code>EquipArmor</code>, and <code>ShowEquipment</code>.</p>
+          </article>
+
+          <article class="api-card" id="type-itemmanager" data-search-item data-search="ItemManager available catalogue database add remove display">
+            <div class="api-card-head">
+              <div><span class="kind class">class</span><h3>ItemManager</h3></div>
+              <a class="anchor" href="#type-itemmanager" aria-label="Link to ItemManager">#</a>
+            </div>
+            <p>Maintains <code>AvailableItems</code> as a simple item catalogue. Provides <code>AddItem</code>, <code>RemoveItem</code>, and <code>DisplayItems</code>.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="doc-section api-namespace" id="exceptions">
+        <div class="namespace-heading">
+          <div><p class="eyebrow">NAMESPACE 05</p><h2>RpgLibrary.Exceptions</h2></div>
+          <span class="type-count">3 exceptions</span>
+        </div>
+        <p class="namespace-intro">Domain-specific failures that callers may catch when using exceptional APIs.</p>
+        <div class="exception-grid">
+          <article class="api-card" data-search-item data-search="InventoryFullException inventory full">
+            <span class="kind exception">exception</span><h3>InventoryFullException</h3>
+            <p>Signals that an inventory cannot accept another item.</p>
+          </article>
+          <article class="api-card" data-search-item data-search="NotEnoughGoldException gold funds money">
+            <span class="kind exception">exception</span><h3>NotEnoughGoldException</h3>
+            <p>Signals insufficient funds in exception-based item flows.</p>
+          </article>
+          <article class="api-card" data-search-item data-search="UltimateNotChargedException ultimate charge ready">
+            <span class="kind exception">exception</span><h3>UltimateNotChargedException</h3>
+            <p>Thrown when an ultimate is used before reaching maximum charge.</p>
+          </article>
+        </div>
+        <div class="callout">
+          <span class="callout-icon" aria-hidden="true">C#</span>
+          <div>
+            <strong>Constructor pattern</strong>
+            <p>Each exception supplies parameterless, message, and message-plus-inner-exception constructors.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="winforms" data-search-item>
+        <div class="section-heading">
+          <p class="eyebrow">INTEGRATION GUIDE</p>
+          <h2>Connect the facade to WinForms</h2>
+          <p>Keep controls in the demo and state transitions in the DLL. Translate result records into presentation.</p>
+        </div>
+        <div class="code-tabs" role="region" aria-label="WinForms example">
+          <div class="code-tab-label">MainForm.cs</div>
+          <pre><code>private void BuyButton_Click(object? sender, EventArgs e)
+{
+    PurchaseResult result = gameManager.BuyItem(selectedSlot);
+
+    statusLabel.Text = result.Status switch
+    {
+        PurchaseStatus.Success =>
+            $"Purchased {result.Item.Name}.",
+        PurchaseStatus.InsufficientGold =>
+            "You do not have enough gold.",
+        PurchaseStatus.OutOfStock =>
+            "That item is out of stock.",
+        _ => "The purchase could not be completed."
+    };
+
+    goldLabel.Text = $"{result.GoldRemaining} G";
+}</code></pre>
+        </div>
+        <div class="flow-strip" aria-label="WinForms facade data flow">
+          <div><span>1</span><strong>User input</strong><small>Button or selection</small></div>
+          <b aria-hidden="true">→</b>
+          <div><span>2</span><strong>Facade call</strong><small>Validated state change</small></div>
+          <b aria-hidden="true">→</b>
+          <div><span>3</span><strong>Result record</strong><small>Status plus data</small></div>
+          <b aria-hidden="true">→</b>
+          <div><span>4</span><strong>UI render</strong><small>Labels, lists, dialogs</small></div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="uml-index" data-search-item>
+        <div class="section-heading">
+          <p class="eyebrow">DIAGRAM INDEX</p>
+          <h2>UML at a glance</h2>
+          <p>Every diagram is generated from a committed PlantUML source file and stored locally as an accessible, responsive SVG.</p>
+          <p class="diagram-disclosure">
+            Namespace sections now use standard UML class diagrams with typed
+            members, visibility, multiplicity, inheritance, realization,
+            composition, and aggregation. Concise overview diagrams and every
+            editable source remain in <a href="uml/README.md">the UML folder</a>.
+          </p>
+        </div>
+        <div class="uml-index-grid">
+          <a href="#architecture"><span>01</span><strong>Facade architecture</strong><small>System dependency view</small></a>
+          <a href="#contracts"><span>02</span><strong>Contracts</strong><small>Interface implementation</small></a>
+          <a href="#world"><span>03</span><strong>World</strong><small>Facade and domain model</small></a>
+          <a href="#combat"><span>04</span><strong>Combat</strong><small>Composition and strategies</small></a>
+          <a href="#items"><span>05</span><strong>Items</strong><small>Inheritance and ownership</small></a>
+        </div>
+      </section>
+
+      <footer>
+        <div class="footer-brand">
+          <img src="assets/coconut.jpg" width="44" height="44" alt="">
+          <div><strong>RpgLibrary</strong><small>Reusable JRPG systems for .NET</small></div>
+        </div>
+        <p>API reference · <span id="current-year">2026</span></p>
+      </footer>
+    </main>
+
+    <aside class="page-toc" aria-label="On this page">
+      <p>On this page</p>
+      <a href="#overview">Overview</a>
+      <a href="#installation">Build &amp; consume</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#contracts">Contracts</a>
+      <a href="#world">World</a>
+      <a href="#combat">Combat</a>
+      <a href="#items">Items</a>
+      <a href="#exceptions">Exceptions</a>
+      <a href="#winforms">WinForms</a>
+      <a href="#uml-index">UML index</a>
+    </aside>
+  </div>
+
+  <dialog class="diagram-dialog" aria-label="UML diagram explorer">
+    <div class="dialog-toolbar">
+      <strong class="dialog-title">UML diagram</strong>
+      <div class="zoom-controls" aria-label="Diagram zoom controls">
+        <button type="button" data-zoom-out aria-label="Zoom out">−</button>
+        <output class="zoom-level" aria-live="polite">100%</output>
+        <button type="button" data-zoom-in aria-label="Zoom in">+</button>
+        <button type="button" data-zoom-fit>Fit</button>
+        <button type="button" data-zoom-actual>100%</button>
+      </div>
+      <button class="dialog-close" type="button" aria-label="Close diagram explorer">×</button>
+    </div>
+    <div class="dialog-viewport" tabindex="0">
+      <div class="dialog-content"></div>
+    </div>
+  </dialog>
+</body>
+</html>

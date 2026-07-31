@@ -1,0 +1,29 @@
+@startuml
+!include theme.puml
+
+title RpgLibrary — subsystem overview
+left to right direction
+skinparam nodesep 65
+skinparam ranksep 65
+
+component "RpgDemo\nWindows Forms" as Demo EXTERNAL
+component "GameManager\nWorld facade" as Facade FACADE
+component "World\nmaps · NPCs · quests · shops" as World
+component "Combat\nbattles · combatants · skills" as Combat
+component "Items\ninventory · equipment" as Items
+component "Contracts\nshared interfaces" as Contracts CONTRACT
+
+Demo --> Facade : world actions
+Demo --> Combat : starts battles
+Demo --> Items : creates content
+Facade --> World : coordinates
+World ..> Contracts
+Combat ..> Contracts
+Items ..> Contracts
+Combat ..> Items : current Hero model
+
+legend bottom
+  Solid arrow = direct use
+  Dashed arrow = contract dependency
+endlegend
+@enduml
