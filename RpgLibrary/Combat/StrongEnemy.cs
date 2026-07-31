@@ -1,6 +1,6 @@
 namespace RpgLibrary.Combat
 {
-    // High HP, high attack, slow — a tank-type enemy.
+    // High HP, high attack
     public class StrongEnemy : Enemy
     {
         public StrongEnemy(string name = "Strong Enemy")
