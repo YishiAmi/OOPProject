@@ -1,29 +1,39 @@
-namespace RPGGameLibrary.Items
+namespace RpgLibrary.Items
 {
-    public class Armor : Item
+    public class Armor : Item, IEquippable
     {
-        public int Defense { get; set; }
+        // Renamed from Defense to match Character's expected DefenseBonus contract.
+        public int DefenseBonus { get; set; }
         public string ArmorType { get; set; }
+
         public Armor(
             string name,
             string description,
             int price,
-            int defense,
+            int defenseBonus,
             string armorType
         )
         : base(name, description, price)
         {
-            Defense = defense;
+            DefenseBonus = defenseBonus;
             ArmorType = armorType;
         }
+
         public override void Use()
         {
-            Console.WriteLine(
-                $"Equipped {Name}"
-            );
-            Console.WriteLine(
-                $"Defense +{Defense}"
-            );
+            Equip();
+        }
+
+        public void Equip()
+        {
+            // Intentionally no console output - Items is a lower-level
+            // library that Combat depends on, so it can't use CombatLog
+            // without creating a circular dependency. Consumers (Hero,
+            // Enemy, UI layer) narrate equip events themselves if needed.
+        }
+
+        public void Unequip()
+        {
         }
     }
 }
