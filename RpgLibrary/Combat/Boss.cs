@@ -4,12 +4,7 @@ using RpgLibrary.Exceptions;
 
 namespace RpgLibrary.Combat
 {
-    // Boss = a special Enemy with an UltimateSkill and an enrage phase.
-    // Shows both inheritance (Boss : Enemy) and composition (has-a Ultimate).
-    //
-    // Enrage threshold percent and the attack bonus applied on enrage
-    // are ctor params — a designer can tune each boss without editing
-    // this file.
+  
     public class Boss : Enemy
     {
         public UltimateSkill Ultimate { get; set; }
@@ -42,8 +37,7 @@ namespace RpgLibrary.Combat
             EnrageAttackBonus = enrageAttackBonus;
         }
 
-        // Takes damage, charges the ultimate, and enters enrage
-        // mode below the configured HP threshold.
+    
         public override void TakeDamage(int damage)
         {
             base.TakeDamage(damage);
