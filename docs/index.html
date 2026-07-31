@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="API reference and architecture guide for the RpgLibrary .NET class library.">
+  <meta name="description" content="API reference and architecture guide for RpgLibrary, a .NET library for turn-based JRPG-style game systems.">
   <meta name="theme-color" content="#263f85">
   <title>RpgLibrary API Reference</title>
   <link rel="icon" type="image/jpeg" href="assets/coconut.jpg">
@@ -55,6 +55,7 @@
       <nav class="side-nav">
         <p class="nav-label">Start</p>
         <a href="#overview">Overview</a>
+        <a href="#jrpg-focus">JRPG design focus</a>
         <a href="#installation">Build &amp; consume</a>
         <a href="#architecture">Architecture</a>
         <p class="nav-label">API namespaces</p>
@@ -83,10 +84,10 @@
           <p class="eyebrow">JRPG CLASS LIBRARY · API REFERENCE</p>
           <h1>Game systems,<br><em>without the screen.</em></h1>
           <p class="hero-lede">
-            RpgLibrary is a reusable .NET class library for turn-based combat,
-            world exploration, quests, shops, items, and player state. Its public
-            APIs return data and outcomes that a WinForms—or any other—front end
-            can render.
+            RpgLibrary is a reusable .NET class library focused on turn-based,
+            JRPG-style combat and world systems. It models quests, shops, items,
+            parties, and player state, then returns data and outcomes that a
+            WinForms—or any other—front end can render.
           </p>
           <div class="hero-actions">
             <a class="button primary" href="#installation">Get started</a>
@@ -104,6 +105,55 @@
             <div><dt>Facade</dt><dd>GameManager</dd></div>
           </dl>
         </aside>
+      </section>
+
+      <section class="doc-section" id="jrpg-focus" data-search-item>
+        <div class="section-heading">
+          <p class="eyebrow">GENRE FOCUS</p>
+          <h2>What “JRPG” means here</h2>
+          <p>
+            JRPG stands for Japanese role-playing game. Here, it describes a
+            design tradition built around party-based characters, command-driven
+            or turn-based battles, skills, equipment, progression, quests, and
+            structured adventures.
+          </p>
+        </div>
+
+        <div class="callout note">
+          <span class="callout-icon" aria-hidden="true">i</span>
+          <div>
+            <strong>A design influence, not a geographic requirement</strong>
+            <p>The label describes the mechanics this library supports, not the nationality of a game's developers or players.</p>
+          </div>
+        </div>
+
+        <div class="genre-grid">
+          <article>
+            <span>01 · COMBAT</span>
+            <h3>Party and battle systems</h3>
+            <p><code>RpgLibrary.Combat</code> provides combatants, turn actions, skills, ultimate abilities, targeting, and enemy behavior.</p>
+          </article>
+          <article>
+            <span>02 · ITEMS</span>
+            <h3>Equipment and preparation</h3>
+            <p>The Items subsystem models weapons, armor, potions, equipment, and inventories used to prepare a party.</p>
+          </article>
+          <article>
+            <span>03 · WORLD</span>
+            <h3>Structured adventure</h3>
+            <p><code>RpgLibrary.World</code> connects maps, NPCs, quests, shops, rewards, and player-level operations through <code>GameManager</code>.</p>
+          </article>
+          <article>
+            <span>04 · PRESENTATION</span>
+            <h3>Your front end, your style</h3>
+            <p><code>IBattleUI</code> and result objects let applications replace the included console battle adapter with WinForms or another front end.</p>
+          </article>
+        </div>
+
+        <p class="genre-scope">
+          RpgLibrary supplies reusable JRPG-oriented building blocks. A complete
+          game still provides its authored story, content, assets, and application UI.
+        </p>
       </section>
 
       <section class="doc-section" id="installation" data-search-item>

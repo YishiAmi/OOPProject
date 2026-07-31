@@ -6,9 +6,9 @@
 
 # RpgLibrary
 
-A reusable .NET 10 class library for building turn-based RPG systems. The
-project models combat, characters, items, inventories, quests, shops, maps,
-and game state without coupling the core library to a particular user
+A reusable .NET 10 class library for building turn-based, JRPG-style systems.
+The project models combat, characters, items, inventories, quests, shops,
+maps, and game state without coupling the core library to a particular user
 interface.
 
 [**Read the documentation**](https://yishiami.github.io/OOPProject/) ·
@@ -27,6 +27,18 @@ interface.
 - A facade-based world API coordinated through `GameManager`.
 - A Windows Forms example that consumes the compiled library DLL.
 - Interactive API documentation and standard UML class diagrams.
+
+## JRPG design focus
+
+JRPG stands for Japanese role-playing game. In this project, the term refers
+to a style of game built around party-based characters, command-driven or
+turn-based battles, skills, equipment, progression, quests, and structured
+adventures. It describes the project's design influences rather than the
+nationality of its developers or players.
+
+RpgLibrary provides building blocks for these genre conventions. It does not
+attempt to supply a complete game engine, authored story and content, or a
+game-specific presentation layer.
 
 ## Documentation
 
