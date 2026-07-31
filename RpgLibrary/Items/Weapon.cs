@@ -1,4 +1,4 @@
-namespace RpgLibrary.Items
+namespace RPGGameLibrary.Items
 {
     public class Weapon : Item, IEquippable
     {
