@@ -1,0 +1,74 @@
+' Shared visual system for the RpgLibrary PlantUML diagrams.
+' This file is source-only and is not rendered by itself.
+
+!pragma layout smetana
+
+skinparam backgroundColor #100C19
+skinparam svgDimensionStyle true
+skinparam shadowing false
+skinparam roundCorner 12
+skinparam linetype ortho
+skinparam defaultFontName "Trebuchet MS"
+skinparam defaultMonospacedFontName "Cascadia Code"
+skinparam defaultFontColor #F6EEDB
+skinparam TitleFontColor #F6EEDB
+skinparam TitleFontSize 18
+skinparam TitleFontStyle bold
+skinparam ArrowColor #B6A77B
+skinparam ArrowFontColor #E3D9C1
+skinparam ArrowFontSize 12
+skinparam ArrowThickness 1.2
+skinparam PackageStyle rectangle
+skinparam PackageBackgroundColor #191323
+skinparam PackageBorderColor #665575
+skinparam PackageFontColor #F0E6D2
+skinparam PackageFontStyle bold
+skinparam NoteBackgroundColor #3A1A29
+skinparam NoteBorderColor #E5778C
+skinparam NoteFontColor #F5DAE0
+skinparam LegendBackgroundColor #191323
+skinparam LegendBorderColor #665575
+skinparam LegendFontColor #E3D9C1
+skinparam ClassAttributeIconSize 0
+
+skinparam class {
+  BackgroundColor #21192D
+  BorderColor #7D6B91
+  FontColor #F6EEDB
+  AttributeFontColor #DED3BE
+  StereotypeFontColor #EFC65A
+  HeaderBackgroundColor #2B2139
+}
+
+skinparam interface {
+  BackgroundColor #172B33
+  BorderColor #79B5A8
+  FontColor #F6EEDB
+}
+
+skinparam component {
+  BackgroundColor #21192D
+  BorderColor #7D6B91
+  FontColor #F6EEDB
+}
+
+skinparam rectangle {
+  BackgroundColor #21192D
+  BorderColor #7D6B91
+  FontColor #F6EEDB
+}
+
+<style>
+document {
+  BackgroundColor #100C19
+  Margin 14
+}
+</style>
+
+hide circle
+hide empty members
+
+!define FACADE #263F85
+!define CONTRACT #172B33
+!define DOMAIN #21192D
+!define EXTERNAL #3A1A29

@@ -1,0 +1,31 @@
+@startuml
+!include theme.puml
+
+title World — core domain relationships
+left to right direction
+skinparam nodesep 55
+skinparam ranksep 65
+
+class GameManager <<Facade>> FACADE
+class Map
+class NPC
+abstract class Quest
+class "MainQuest / SideQuest" as QuestTypes
+class Shop
+class ShopSlot
+class "Operation result records" as Results
+interface ICombatant
+interface IShopItem
+
+GameManager --> "1" Map : CurrentMap
+GameManager --> "1" ICombatant : Player
+GameManager *-- "0..*" Quest : quest log
+GameManager ..> Results : returns
+Map o-- "0..*" NPC
+Map o-- "0..*" ICombatant : enemies
+Map o-- "0..1" Shop
+NPC --> "0..1" Quest : offers
+QuestTypes --|> Quest
+Shop *-- "0..*" ShopSlot
+ShopSlot --> "1" IShopItem
+@enduml

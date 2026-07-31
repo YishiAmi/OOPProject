@@ -1,0 +1,84 @@
+@startuml
+!include theme.puml
+
+title RpgLibrary.Contracts — interface contracts and realizations
+top to bottom direction
+skinparam nodesep 42
+skinparam ranksep 52
+
+package "RpgLibrary.Contracts" CONTRACT {
+  interface ICombatant {
+    + Name: string {readOnly}
+    + Health: int {readOnly}
+    + MaxHealth: int {readOnly}
+    + Defense: int {readOnly}
+    + Speed: int {readOnly}
+    --
+    + IsAlive(): bool
+    + TakeDamage(damage: int): void
+    + Heal(amount: int): void
+    + BasicAttack(target: ICombatant): void
+  }
+
+  interface IShopItem {
+    + Name: string {readOnly}
+    + Price: int {readOnly}
+  }
+
+  interface IEquippable {
+    + Equip(): void
+    + Unequip(): void
+  }
+
+  interface IBattleUI {
+    + ShowIntro(state: BattleState): void
+    + ShowRoundStart(state: BattleState): void
+    + ShowActorTurn(actor: ICombatant, isPartyMember: bool): void
+    + ShowMessage(message: string): void
+    + ChooseAction(member: PartyMember, options): BattleActionOption?
+    + ChooseTarget(candidates, prompt: string): ICombatant?
+    + ChooseSkill(skills): Skill?
+    + ShowBattleEnd(outcome: BattleOutcome, rounds: int): void
+  }
+
+  interface IEnemyStrategy {
+    + TakeTurn(actor: ICombatant, allies, enemies): void
+  }
+}
+
+package "RpgLibrary.Combat" {
+  class Hero
+  abstract class Enemy
+  class ConsoleBattleUI
+  class AutoBattleUI
+  class RandomTargetStrategy
+  class LowestHpTargetStrategy
+}
+
+package "RpgLibrary.Items" {
+  class Item
+  class Armor
+}
+
+package "RpgDemo" EXTERNAL {
+  class WinFormBattleUI
+}
+
+Hero ..|> ICombatant
+Enemy ..|> ICombatant
+Item ..|> IShopItem
+Armor --|> Item
+Armor ..|> IEquippable
+ConsoleBattleUI ..|> IBattleUI
+AutoBattleUI --|> ConsoleBattleUI
+WinFormBattleUI ..|> IBattleUI
+RandomTargetStrategy ..|> IEnemyStrategy
+LowestHpTargetStrategy ..|> IEnemyStrategy
+
+legend bottom right
+  <b>UML notation</b>
+  Dashed line + hollow triangle: interface realization
+  Solid line + hollow triangle: class inheritance
+  + public member
+endlegend
+@enduml

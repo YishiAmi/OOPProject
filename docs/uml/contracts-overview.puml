@@ -1,0 +1,26 @@
+@startuml
+!include theme.puml
+
+title Shared contracts — implementation overview
+top to bottom direction
+skinparam nodesep 55
+skinparam ranksep 60
+
+interface ICombatant
+interface IShopItem
+interface IEquippable
+interface IBattleUI
+interface IEnemyStrategy
+
+class "Hero / Enemy" as Combatants
+class Item
+class Armor
+class "ConsoleBattleUI\nWinFormBattleUI" as BattleUIs
+class "RandomTargetStrategy\nLowestHpTargetStrategy" as Strategies
+
+Combatants ..|> ICombatant
+Item ..|> IShopItem
+Armor ..|> IEquippable
+BattleUIs ..|> IBattleUI
+Strategies ..|> IEnemyStrategy
+@enduml

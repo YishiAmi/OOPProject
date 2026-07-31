@@ -1,0 +1,30 @@
+@startuml
+!include theme.puml
+!pragma layout elk
+
+title Combat — orchestration overview
+top to bottom direction
+skinparam nodesep 55
+skinparam ranksep 65
+
+class BattleSystem
+class PartyMember
+class BattleSettings
+interface ICombatant
+package "Extension points" {
+  interface IBattleUI
+  interface IEnemyStrategy
+}
+class "Hero / Enemy hierarchy" as Combatants
+class "Skill / Ultimate hierarchy" as Skills
+
+BattleSystem *-- "1..*" PartyMember : party
+BattleSystem o-- "1..*" ICombatant : enemies
+BattleSystem --> IBattleUI : presentation
+BattleSystem --> IEnemyStrategy : enemy decisions
+BattleSystem --> BattleSettings : rules
+PartyMember --> ICombatant
+PartyMember o-- "0..*" Skills
+Combatants ..|> ICombatant
+Combatants o-- Skills : uses
+@enduml

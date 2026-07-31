@@ -1,0 +1,216 @@
+@startuml
+!include theme.puml
+!pragma layout elk
+
+title RpgLibrary.World — facade and domain class model
+top to bottom direction
+skinparam nodesep 42
+skinparam ranksep 54
+
+package "RpgLibrary.Contracts" CONTRACT {
+  interface ICombatant
+  interface IShopItem {
+    + Name: string {readOnly}
+    + Price: int {readOnly}
+  }
+}
+
+package "RpgLibrary.World" {
+  class GameManager <<Facade>> FACADE {
+    - _activeQuests: List<Quest>
+    - _completedQuests: List<Quest>
+    --
+    + Player: ICombatant {readOnly}
+    + CurrentMap: Map {readOnly}
+    + PlayerGold: int {readOnly}
+    + ActiveQuests: IReadOnlyList<Quest> {readOnly}
+    + CompletedQuests: IReadOnlyList<Quest> {readOnly}
+    --
+    + GameManager(player, startingMap, startingGold = 0)
+    + ChangeMap(newMap: Map): Map
+    + TalkToNpc(npc: NPC): NpcInteractionResult
+    + AcceptQuest(npc: NPC): QuestActionResult
+    + AddQuestProgress(quest: Quest, amount: int): QuestActionResult
+    + CompleteQuest(quest: Quest): QuestActionResult
+    + GetCurrentShop(): Shop?
+    + BuyItem(slot: ShopSlot): PurchaseResult
+    + AwardGold(amount: int): int
+  }
+
+  class Map {
+    - _npcs: List<NPC>
+    - _enemies: List<ICombatant>
+    --
+    + MapName: string {readOnly}
+    + Difficulty: int {readOnly}
+    + NPCs: IReadOnlyList<NPC> {readOnly}
+    + Enemies: IReadOnlyList<ICombatant> {readOnly}
+    + LocalShop: Shop? {readOnly}
+    --
+    + Map(mapName: string, difficulty: int)
+    + AddNpc(npc: NPC): void
+    + RemoveNpc(npc: NPC): bool
+    + ContainsNpc(npc: NPC): bool
+    + AddEnemy(enemy: ICombatant): void
+    + RemoveEnemy(enemy: ICombatant): bool
+    + ContainsEnemy(enemy: ICombatant): bool
+    + SetLocalShop(shop: Shop?): void
+  }
+
+  class NPC {
+    + Name: string {readOnly}
+    + Dialogue: string {readOnly}
+    + OfferedQuest: Quest? {readOnly}
+    --
+    + NPC(name: string, dialogue: string, offeredQuest: Quest? = null)
+    + Talk(): string
+    + AssignQuest(quest: Quest): void
+    + RemoveQuest(): Quest?
+  }
+
+  abstract class Quest {
+    + Title: string {readOnly}
+    + Objective: string {readOnly}
+    + GoldReward: int {readOnly}
+    + RequiredProgress: int {readOnly}
+    + CurrentProgress: int {readOnly}
+    + Status: QuestStatus {readOnly}
+    + Type: QuestType {abstract, readOnly}
+    + Completed: bool {readOnly}
+    + CanComplete: bool {readOnly}
+    --
+    # Quest(title, objective, goldReward, requiredProgress = 1)
+    ~ Accept(): bool
+    ~ AddProgress(amount: int): bool
+    ~ Complete(): bool
+  }
+
+  class MainQuest <<sealed>> {
+    + Chapter: int {readOnly}
+    + Type: QuestType {readOnly}
+  }
+
+  class SideQuest <<sealed>> {
+    + Region: string {readOnly}
+    + Type: QuestType {readOnly}
+  }
+
+  class Shop <<sealed>> {
+    - _inventory: List<ShopSlot>
+    --
+    + ShopName: string {readOnly}
+    + Inventory: IReadOnlyList<ShopSlot> {readOnly}
+    --
+    + Shop(shopName: string)
+    + AddStock(item: IShopItem, quantity: int): ShopSlot
+    + RemoveStock(item: IShopItem, quantity: int): bool
+    ~ TryTake(slot, availableGold, out purchasePrice): PurchaseStatus
+  }
+
+  class ShopSlot <<sealed>> {
+    + Item: IShopItem {readOnly}
+    + Quantity: int {readOnly}
+    + IsInStock: bool {readOnly}
+    --
+    + ShopSlot(item: IShopItem, quantity: int)
+    ~ TryTakeOne(): bool
+    ~ Restock(quantity: int): void
+    ~ TryRemove(quantity: int): bool
+  }
+
+  class NpcInteractionResult <<record>> {
+    + Status: NpcInteractionStatus {readOnly}
+    + Npc: NPC {readOnly}
+    + Dialogue: string {readOnly}
+    + OfferedQuest: Quest? {readOnly}
+    + CanAcceptQuest: bool {readOnly}
+    + Succeeded: bool {readOnly}
+  }
+
+  class QuestActionResult <<record>> {
+    + Status: QuestActionStatus {readOnly}
+    + Quest: Quest? {readOnly}
+    + GoldAwarded: int {readOnly}
+    + GoldRemaining: int {readOnly}
+    + Succeeded: bool {readOnly}
+  }
+
+  class PurchaseResult <<record>> {
+    + Status: PurchaseStatus {readOnly}
+    + Item: IShopItem {readOnly}
+    + PricePaid: int {readOnly}
+    + GoldRemaining: int {readOnly}
+    + Succeeded: bool {readOnly}
+  }
+
+  enum QuestStatus {
+    Available
+    Active
+    Completed
+  }
+
+  enum QuestType {
+    Main
+    Side
+  }
+
+  enum NpcInteractionStatus {
+    Success
+    NpcNotInCurrentMap
+  }
+
+  enum QuestActionStatus {
+    Success
+    NpcNotInCurrentMap
+    NoQuestOffered
+    AlreadyAccepted
+    QuestNotActive
+    InvalidProgress
+    RequirementsNotMet
+    AlreadyCompleted
+  }
+
+  enum PurchaseStatus {
+    Success
+    ItemNotSold
+    OutOfStock
+    InsufficientGold
+    ShopUnavailable
+  }
+}
+
+GameManager --> "1" ICombatant : Player
+GameManager --> "1" Map : CurrentMap
+GameManager o-- "0..*" Quest : quest log
+GameManager ..> NpcInteractionResult : creates
+GameManager ..> QuestActionResult : creates
+GameManager ..> PurchaseResult : creates
+
+Map o-- "0..*" NPC : NPCs
+Map o-- "0..*" ICombatant : Enemies
+Map o-- "0..1" Shop : LocalShop
+NPC --> "0..1" Quest : OfferedQuest
+MainQuest --|> Quest
+SideQuest --|> Quest
+Shop *-- "0..*" ShopSlot : Inventory
+ShopSlot --> "1" IShopItem : Item
+
+Quest --> QuestStatus
+Quest --> QuestType
+NpcInteractionResult --> NpcInteractionStatus
+NpcInteractionResult --> NPC
+NpcInteractionResult --> "0..1" Quest
+QuestActionResult --> QuestActionStatus
+QuestActionResult --> "0..1" Quest
+PurchaseResult --> PurchaseStatus
+PurchaseResult --> IShopItem
+
+legend bottom right
+  <b>UML notation</b>
+  Filled diamond: composition / owned lifecycle
+  Hollow diamond: aggregation / contained reference
+  Hollow triangle: inheritance
+  Dashed arrow: dependency / returned result
+  + public   # protected   ~ internal   - private
+endlegend
+@enduml

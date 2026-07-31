@@ -1,0 +1,118 @@
+@startuml
+!include theme.puml
+!pragma layout elk
+
+title RpgLibrary.Items — inheritance and ownership class model
+top to bottom direction
+skinparam nodesep 44
+skinparam ranksep 54
+
+package "RpgLibrary.Contracts" CONTRACT {
+  interface IShopItem {
+    + Name: string {readOnly}
+    + Price: int {readOnly}
+  }
+
+  interface IEquippable {
+    + Equip(): void
+    + Unequip(): void
+  }
+}
+
+package "RpgLibrary.Items" {
+  class Item {
+    + Name: string
+    + Description: string
+    + Value: int
+    + Price: int {readOnly}
+    --
+    + Item(name: string, description: string, value: int)
+    + Use(): void {virtual}
+    + DisplayInfo(): void
+  }
+
+  class Weapon {
+    + Damage: int
+    + WeaponType: string
+    --
+    + Weapon(name, description, price, damage, weaponType)
+    + Use(): void {override}
+  }
+
+  class Armor {
+    + DefenseBonus: int
+    + Defense: int {deprecated}
+    + ArmorType: string
+    --
+    + Armor(name, description, price, defenseBonus, armorType)
+    + Use(): void {override}
+    + Equip(): void
+    + Unequip(): void
+  }
+
+  class Potion {
+    + HealAmount: int
+    --
+    + Potion(name, description, price, healAmount)
+    + Drink(): void
+    + Use(): void {override}
+  }
+
+  class Inventory {
+    + Items: List<Item>
+    + Capacity: int
+    --
+    + Inventory(capacity: int)
+    + AddItem(item: Item): bool
+    + RemoveItem(item: Item): void
+    + ShowInventory(): void
+    + GetItemCount(): int
+  }
+
+  class Equipment {
+    + EquippedWeapon: Weapon {readOnly}
+    + EquippedArmor: Armor {readOnly}
+    --
+    + EquipWeapon(weapon: Weapon): void
+    + EquipArmor(armor: Armor): void
+    + ShowEquipment(): void
+  }
+
+  class ItemManager {
+    + AvailableItems: List<Item>
+    --
+    + ItemManager()
+    + AddItem(item: Item): void
+    + RemoveItem(item: Item): void
+    + DisplayItems(): void
+  }
+}
+
+package "RpgLibrary.Combat" {
+  class Hero <<external consumer>>
+}
+
+Item ..|> IShopItem
+Weapon --|> Item
+Armor --|> Item
+Potion --|> Item
+Armor ..|> IEquippable
+
+Inventory o-- "0..*" Item : Items
+Equipment o-- "0..1" Weapon : EquippedWeapon
+Equipment o-- "0..1" Armor : EquippedArmor
+ItemManager o-- "0..*" Item : AvailableItems
+
+Hero *-- "1" Inventory
+Hero --> "0..1" Weapon : EquippedWeapon
+Hero --> "0..1" Armor : EquippedArmor
+
+legend bottom right
+  <b>UML notation</b>
+  Dashed line + hollow triangle: interface realization
+  Solid line + hollow triangle: inheritance
+  Filled diamond: composition / owned lifecycle
+  Hollow diamond: aggregation / collection
+  + public member
+endlegend
+@enduml

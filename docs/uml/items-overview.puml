@@ -1,0 +1,32 @@
+@startuml
+!include theme.puml
+
+title Items — inheritance and ownership overview
+top to bottom direction
+skinparam nodesep 55
+skinparam ranksep 65
+
+interface IShopItem
+interface IEquippable
+class Item
+class Weapon
+class Armor
+class Potion
+class Inventory
+class Equipment
+class ItemManager
+class "Combat.Hero" as Hero
+
+Item ..|> IShopItem
+Weapon --|> Item
+Armor --|> Item
+Potion --|> Item
+Armor ..|> IEquippable
+Inventory o-- "0..*" Item
+Equipment o-- "0..1" Weapon
+Equipment o-- "0..1" Armor
+ItemManager o-- "0..*" Item
+Hero --> Inventory
+Hero --> Weapon
+Hero --> Armor
+@enduml

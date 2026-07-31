@@ -1,0 +1,309 @@
+@startuml
+!include theme.puml
+!pragma layout elk
+
+title RpgLibrary.Combat — battle orchestration class model
+top to bottom direction
+skinparam nodesep 42
+skinparam ranksep 54
+
+package "RpgLibrary.Contracts" CONTRACT {
+  interface ICombatant {
+    + Name: string {readOnly}
+    + Health: int {readOnly}
+    + MaxHealth: int {readOnly}
+    + Defense: int {readOnly}
+    + Speed: int {readOnly}
+    --
+    + IsAlive(): bool
+    + TakeDamage(damage: int): void
+    + Heal(amount: int): void
+    + BasicAttack(target: ICombatant): void
+  }
+
+  interface IBattleUI
+  interface IEnemyStrategy
+}
+
+package "Battle orchestration" {
+  class BattleSystem {
+    - _party: List<PartyMember>
+    - _enemies: List<ICombatant>
+    - _ui: IBattleUI
+    - _enemyStrategy: IEnemyStrategy
+    - _settings: BattleSettings
+    --
+    + Round: int {readOnly}
+    + Outcome: BattleOutcome {readOnly}
+    + PartyWon: bool {readOnly}
+    + BattleOver: bool {readOnly}
+    + RoundStarted: event
+    + TurnStarted: event
+    + BattleEnded: event
+    --
+    + BattleSystem(party, enemies, ui, enemyStrategy, settings)
+    + Run(): void
+  }
+
+  class PartyMember {
+    - _skills: List<Skill>
+    --
+    + Combatant: ICombatant {readOnly}
+    + Skills: IReadOnlyList<Skill> {readOnly}
+    + Ultimate: UltimateSkill? {readOnly}
+    --
+    + PartyMember(combatant, skills = null, ultimate = null)
+  }
+
+  class BattleSettings {
+    + UltimateChargePerTurn: int
+    + MaxRounds: int
+    + RemoveKOFromTurnOrder: bool
+  }
+
+  class BattleState {
+    + Round: int {readOnly}
+    + Party: IReadOnlyList<PartyMember> {readOnly}
+    + Enemies: IReadOnlyList<ICombatant> {readOnly}
+    + TurnOrder: IReadOnlyList<ICombatant> {readOnly}
+  }
+
+  class BattleActionOption {
+    + Kind: BattleActionKind {readOnly}
+    + Label: string {readOnly}
+    + Enabled: bool {readOnly}
+    + Detail: string? {readOnly}
+  }
+
+  enum BattleActionKind {
+    Attack
+    Skill
+    Ultimate
+    Defend
+    Flee
+  }
+
+  enum BattleOutcome {
+    Undecided
+    Victory
+    Defeat
+    Timeout
+  }
+}
+
+package "Combatants" {
+  class Hero {
+    + Name: string
+    + MaxHealth: int
+    + Health: int
+    + Attack: int
+    + Defense: int
+    + Speed: int
+    + Level: int
+    + Experience: int
+    + Gold: int
+    --
+    + IsAlive(): bool
+    + TakeDamage(damage: int): void
+    + Heal(amount: int): void
+    + BasicAttack(target: ICombatant): void
+    + EquipWeapon(weapon: Weapon): void
+    + EquipArmor(armor: Armor): void
+    + GainExperience(exp: int): void
+    + LevelUp(): void
+  }
+
+  abstract class Enemy {
+    + Name: string {readOnly}
+    + MaxHealth: int {readOnly}
+    # Health: int
+    # Attack: int
+    + Defense: int {readOnly}
+    + Speed: int {readOnly}
+    # Skills: List<Skill> {readOnly}
+    --
+    # Enemy(name, maxHealth, attack, defense, speed = 8)
+    + IsAlive(): bool
+    + TakeDamage(damage: int): void {virtual}
+    + Heal(amount: int): void
+    + BasicAttack(target: ICombatant): void
+    + TakeTurn(target: ICombatant): void {virtual}
+    + AddSkill(skill: Skill): void
+  }
+
+  class WeakEnemy
+  class StrongEnemy
+  class HealerEnemy
+
+  class Boss {
+    + Ultimate: UltimateSkill
+    + IsEnraged: bool
+    + EnrageThresholdPercent: int {readOnly}
+    + EnrageAttackBonus: int {readOnly}
+    --
+    + TakeDamage(damage: int): void {override}
+    + TakeTurn(target: ICombatant): void {override}
+  }
+}
+
+package "Skills" {
+  abstract class Skill {
+    + Name: string
+    + Power: int
+    + Target: TargetType {abstract, readOnly}
+    --
+    # Skill(name: string, power: int)
+    + Use(source: ICombatant, target: ICombatant): void {abstract}
+  }
+
+  class AttackSkill {
+    + Target: TargetType {readOnly}
+    + Use(source, target): void {override}
+  }
+
+  class HealSkill {
+    + Target: TargetType {readOnly}
+    + Use(source, target): void {override}
+  }
+
+  abstract class UltimateSkill {
+    - _maxCharge: int
+    - _currentCharge: int
+    --
+    + MaxCharge: int {readOnly}
+    + CurrentCharge: int {readOnly}
+    + IsCharged: bool {readOnly}
+    + DamageMultiplier: int
+    --
+    + Charge(amount: int = 1): void
+    + ResetCharge(): void
+    + Use(source, target): void {override}
+    # Execute(source, target): void {abstract}
+  }
+
+  class DamageUltimate {
+    + BaseDamage: int {readOnly}
+    + Target: TargetType {readOnly}
+  }
+
+  class DrainUltimate {
+    + DrainRatio: double {readOnly}
+    + Target: TargetType {readOnly}
+  }
+
+  class HealUltimate {
+    + HealRatio: double {readOnly}
+    + Target: TargetType {readOnly}
+  }
+
+  enum TargetType {
+    Self
+    SingleAlly
+    SingleEnemy
+    AllAllies
+    AllEnemies
+  }
+}
+
+package "Adapters and policies" {
+  class ConsoleBattleUI {
+    - _hpBarWidth: int
+    --
+    + ConsoleBattleUI(hpBarWidth: int = 20)
+    + ShowIntro(state: BattleState): void
+    + ShowRoundStart(state: BattleState): void
+    + ShowActorTurn(actor, isPartyMember): void
+    + ShowMessage(message: string): void
+    + ChooseAction(member, options): BattleActionOption?
+    + ChooseTarget(candidates, prompt): ICombatant?
+    + ChooseSkill(skills): Skill?
+    + ShowBattleEnd(outcome, rounds): void
+  }
+
+  class AutoBattleUI
+  class RandomTargetStrategy
+  class LowestHpTargetStrategy
+
+  class EnemyFactory <<static>> {
+    + {static} CreateWeakEnemy(name): Enemy
+    + {static} CreateStrongEnemy(name): Enemy
+    + {static} CreateHealerEnemy(name): Enemy
+    + {static} CreateDamageBoss(name): Boss
+    + {static} CreateDrainBoss(name): Boss
+  }
+
+  class CombatLog <<static>> {
+    + {static} Sink: Action<string>
+    + {static} Write(message: string): void
+  }
+
+  class CombatBalance <<static>> {
+    + {static} DefenseDivisor: int
+  }
+}
+
+package "RpgLibrary.Items" {
+  class Inventory
+  class Weapon
+  class Armor
+}
+
+Hero ..|> ICombatant
+Enemy ..|> ICombatant
+WeakEnemy --|> Enemy
+StrongEnemy --|> Enemy
+HealerEnemy --|> Enemy
+Boss --|> Enemy
+
+Skill <|-- AttackSkill
+Skill <|-- HealSkill
+Skill <|-- UltimateSkill
+UltimateSkill <|-- DamageUltimate
+UltimateSkill <|-- DrainUltimate
+UltimateSkill <|-- HealUltimate
+
+ConsoleBattleUI ..|> IBattleUI
+AutoBattleUI --|> ConsoleBattleUI
+RandomTargetStrategy ..|> IEnemyStrategy
+LowestHpTargetStrategy ..|> IEnemyStrategy
+
+BattleSystem o-- "1..*" PartyMember : party
+BattleSystem o-- "1..*" ICombatant : enemies
+BattleSystem --> "1" IBattleUI : UI port
+BattleSystem --> "1" IEnemyStrategy : AI policy
+BattleSystem --> "1" BattleSettings
+BattleSystem ..> BattleState : creates
+BattleSystem ..> BattleActionOption : creates
+BattleSystem --> BattleOutcome
+
+PartyMember --> "1" ICombatant
+PartyMember o-- "0..*" Skill
+PartyMember o-- "0..1" UltimateSkill
+Enemy o-- "0..*" Skill
+Boss o-- "1" UltimateSkill
+Skill --> TargetType
+BattleActionOption --> BattleActionKind
+BattleState o-- PartyMember
+BattleState o-- ICombatant
+
+Hero *-- "1" Inventory
+Hero --> "0..1" Weapon
+Hero --> "0..1" Armor
+
+EnemyFactory ..> Enemy : creates
+EnemyFactory ..> Boss : creates
+BattleSystem ..> CombatLog
+Hero ..> CombatBalance
+Enemy ..> CombatBalance
+
+legend bottom right
+  <b>UML notation</b>
+  Dashed line + hollow triangle: interface realization
+  Solid line + hollow triangle: inheritance
+  Filled diamond: composition / owned lifecycle
+  Hollow diamond: aggregation / collection
+  Solid arrow: navigable association
+  Dashed arrow: dependency
+  + public   # protected   - private
+endlegend
+@enduml

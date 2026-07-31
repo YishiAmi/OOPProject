@@ -1,6 +1,6 @@
 # RPG Class Library
 
-A small .NET class library containing reusable RPG domain models, accompanied by a minimal console application that demonstrates how to consume the library. The repository is a shared object-oriented programming project, not a complete game.
+A small .NET class library containing reusable RPG domain models, accompanied by a minimal Windows Forms application that demonstrates how to consume the library. The repository is a shared object-oriented programming project, not a complete game.
 
 ## Team Members
 
@@ -17,10 +17,14 @@ OOPProject.sln
 │   ├── Combat/      Characters, enemies, and skills
 │   ├── Items/       Equipment, consumables, and inventory
 │   └── World/       NPCs, shops, maps, quests, and game state
-└── RpgDemo/         Minimal console consumer
+└── RpgDemo/         Windows Forms demo consumer
 ```
 
-`RpgLibrary` builds `RpgLibrary.dll`. `RpgDemo` references that project and shows basic object creation without adding gameplay logic.
+`RpgLibrary` builds `RpgLibrary.dll`. Before resolving its references,
+`RpgDemo` builds the library and then loads that compiled DLL from the
+matching configuration folder (`bin/Debug` or `bin/Release`). The demo
+therefore exercises the same distributable library artifact that another
+application would consume.
 
 ## Build and Run
 
