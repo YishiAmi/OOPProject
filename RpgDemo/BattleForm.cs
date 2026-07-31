@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using RpgLibrary.Combat;
 using RpgLibrary.Contracts;
 
-namespace RpgWinForm
+namespace RpgDemo
 {
     // Turn-based battle window. BattleSystem runs on a background thread
     // and calls back to us through WinFormBattleUI.

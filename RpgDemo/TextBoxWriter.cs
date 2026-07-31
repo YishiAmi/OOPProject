@@ -2,7 +2,7 @@ using System.IO;
 using System.Text;
 using System.Windows.Forms;
 
-namespace RpgWinForm
+namespace RpgDemo
 {
     /// <summary>
     /// A TextWriter that redirects Console.Write / Console.WriteLine

@@ -3,7 +3,7 @@ using System.Threading;
 using RpgLibrary.Combat;
 using RpgLibrary.Contracts;
 
-namespace RpgWinForm
+namespace RpgDemo
 {
     // Plugs BattleSystem into BattleForm. BattleSystem runs on a background
     // thread, this class marshals its calls back onto the UI thread and

@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using RpgLibrary.Combat;
 using RpgLibrary.Contracts;
 
-namespace RpgWinForm
+namespace RpgDemo
 {
     public class LauncherForm : Form
     {

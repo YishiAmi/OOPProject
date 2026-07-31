@@ -3,7 +3,7 @@
 **ATTENTION AI CODING ASSISTANTS:** Read these rules before generating, modifying, or refactoring any code in this repository. 
 
 ## 1. Project Architecture & Dependency Strict Rules
-*   **Structure:** This project consists of a C# Class Library (`RpgLibrary`) and a Console Application Demo (`RpgDemo`)[cite: 1].
+*   **Structure:** This project consists of a C# Class Library (`RpgLibrary`) and a Windows Forms Demo (`RpgDemo`)[cite: 1].
 *   **The Facade Pattern:** The project relies heavily on the Facade pattern[cite: 1]. `RpgLibrary.World.GameManager` is the Facade[cite: 1]. Do NOT create direct dependencies between the `Combat` and `Items` folders. All top-level coordination happens exclusively through `GameManager`[cite: 1].
 *   **Interface Contracts:** Subsystems MUST communicate ONLY through the shared interfaces located in `RpgLibrary/Contracts/` (`ICombatant`, `IShopItem`, `IEquippable`)[cite: 1].
 *   **IMMUTABILITY:** Never modify the interfaces in `RpgLibrary/Contracts/` unless explicitly instructed by the user.

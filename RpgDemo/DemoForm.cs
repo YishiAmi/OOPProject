@@ -7,7 +7,7 @@ using RpgLibrary.Contracts;
 using RpgLibrary.World;
 using RPGGameLibrary.Items;
 
-namespace RpgWinForm
+namespace RpgDemo
 {
     // Click-through walkthrough of the library. Each button hits ONE API
     // and shows the result in the log. State panel refreshes after each click.

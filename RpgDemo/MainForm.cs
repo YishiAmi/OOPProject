@@ -8,7 +8,7 @@ using RpgLibrary.Contracts;
 using RpgLibrary.Exceptions;
 using RPGGameLibrary.Items;
 
-namespace RpgWinForm
+namespace RpgDemo
 {
     public class MainForm : Form
     {
